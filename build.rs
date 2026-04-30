@@ -3,36 +3,28 @@ fn main() {
     // --- WINDOWS BUILD ONLY ---
     #[cfg(windows)]
     {
-        // Get project directory early for all path references
         let project_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+        let vendor_lib = std::path::Path::new(&project_dir).join("vendor").join("lib");
+        let vendor_bin = std::path::Path::new(&project_dir).join("vendor").join("bin");
 
-        // Always add packaging/windows/libs for rubberband, fftw3, samplerate, sndfile
-        println!(
-            "cargo:rustc-link-search=native={}/packaging/windows/libs",
-            project_dir
-        );
+        // 1. Tell linker to search for .lib files in vendor/lib
+        println!("cargo:rustc-link-search=native={}", vendor_lib.display());
 
-        // Use FFMPEG_DIR environment variable for FFmpeg libraries
-        if let Ok(ffmpeg_dir) = std::env::var("FFMPEG_DIR") {
-            println!("cargo:rustc-link-search=native={}/lib", ffmpeg_dir);
-        } else {
-            // Fallback to project packaging folder for FFmpeg
-            println!(
-                "cargo:rustc-link-search=native={}/packaging/windows/libs",
-                project_dir
-            );
-        }
+        // 2. Link libraries from vendor/lib
+        println!("cargo:rustc-link-lib=rubberband");
+        println!("cargo:rustc-link-lib=avcodec");
+        println!("cargo:rustc-link-lib=avdevice");
+        println!("cargo:rustc-link-lib=avformat");
+        println!("cargo:rustc-link-lib=avutil");
+        println!("cargo:rustc-link-lib=swresample");
+
+        // 3. Copy DLLs from vendor/bin to target directory for cargo run
+        copy_vendor_dlls(&vendor_bin, &project_dir);
 
         // Add Windows SDK include paths for ffmpeg-sys-next
         if let Some(sdk_path) = find_windows_sdk_include() {
             println!("cargo:rustc-cppflags=-I\"{}\"", sdk_path);
         }
-
-        // Link DSP libraries (rubberband, fftw3, samplerate, sndfile)
-        println!("cargo:rustc-link-lib=rubberband");
-        println!("cargo:rustc-link-lib=libfftw3-3");
-        println!("cargo:rustc-link-lib=samplerate");
-        println!("cargo:rustc-link-lib=sndfile");
 
         // Metadata & Icon Windows
         let icon_path = format!("{}/packaging/windows/icon.ico", project_dir);
@@ -98,6 +90,25 @@ END
 
     // Re-run if icon or resource file changes
     println!("cargo:rerun-if-changed=packaging/windows/icon.ico");
+    println!("cargo:rerun-if-changed=vendor/bin");
+}
+
+// Copy DLLs from vendor/bin to target/{profile} for runtime
+fn copy_vendor_dlls(vendor_bin: &std::path::Path, project_dir: &str) {
+    let profile = std::env::var("PROFILE").unwrap_or_else(|_| "debug".to_string());
+    let dst = std::path::Path::new(project_dir).join("target").join(&profile);
+
+    if let Ok(entries) = std::fs::read_dir(vendor_bin) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().and_then(|s| s.to_str()) == Some("dll") {
+                let dest_file = dst.join(path.file_name().unwrap());
+                if let Err(e) = std::fs::copy(&path, &dest_file) {
+                    eprintln!("Warning: Failed to copy {}: {}", path.display(), e);
+                }
+            }
+        }
+    }
 }
 
 #[cfg(windows)]

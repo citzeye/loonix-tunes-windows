@@ -1,25 +1,31 @@
-# Loonix-tunes ignore
-*.log
-bin/
-obj/
-.DS_Store
+# --- Loonix-tunes Core ---
+/target/
 Cargo.lock
-node_modules
-/target
 
-# Editor & OS
+# --- Build & Packaging Output ---
+# Abaikan folder hasil deploy agar tidak masuk repo
+*.zip
+*.exe
+*.msi
+
+# --- Editor & OS Junk ---
+.DS_Store
+Thumbs.db
 *.swp
 *.swo
+*.log
+.vscode/
+.idea/
 
-# Build output
-dist/
-*.zip
-Output/
-
-# AI
-graphify-out
+# --- AI & Backup Junk ---
+graphify-out/
 AGENTS.md
 .skill
 .backup
-.opencode
+.opencode/
 **/*.rs.bk
+
+# --- IMPORTANT: VENDOR ---
+# Kita ingin track folder /vendor karena ini SSoT kita.
+# Pastikan tidak ada aturan 'bin/' atau 'lib/' yang global di atas.
+!/vendor/

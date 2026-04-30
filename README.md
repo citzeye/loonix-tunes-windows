@@ -1,7 +1,7 @@
 <div align="center">
-  <img src="packaging/linux/icon.png" width="400" alt="Loonix-Tunes Logo">
+  <img src="assets/LoonixTunes.png" width="400" alt="Loonix-Tunes Logo">
   <h1>Loonix-Tunes</h1>
-  <p><b>A high-performance, native Linux audio player crafted for uncompromising sound quality.</b></p>
+  <p><b>A high-performance, native Windows audio player crafted for uncompromising sound quality.</b></p>
   <p>Built with Rust & Qt/QML</p>
 </div>
 
@@ -15,36 +15,45 @@
 
 
 ## 🎵 About The Project
-Loonix-Tunes is an elegant, fast, and feature-rich audio player designed specifically for Linux users who care about audio processing and system efficiency. By combining a blazingly fast Rust audio engine with a beautiful, hardware-accelerated Qt interface, Loonix-Tunes delivers a premium listening experience without bloating your system.
+Loonix-Tunes is an elegant, fast, and feature-rich audio player designed for Windows users who care about audio processing and system efficiency. By combining a blazingly fast Rust audio engine with a beautiful, hardware-accelerated Qt interface, Loonix-Tunes delivers a premium listening experience without bloating your system.
 
 ## ✨ Key Features
 * **Native & Efficient:** Compiled to machine code. Snappy UI, minimal RAM footprint, and instant startup times.
 * **Advanced DSP Suite:** Built-in studio-grade effects including Crystalizer, Bass Booster, Compressor, Reverb, and a robust Equalizer.
-* **Pro-Audio Ready:** Native support for VST3 plugins to take your audio processing to the next level.
 * **High-Res Audio Engine:** Custom pipeline handling pristine audio decoding, resampling, and gapless playback.
 * **Time & Pitch Shifting:** Powered by the industry-standard Rubberband library for high-quality audio stretching.
-* **Desktop Integration:** Full MPRIS/DBus support for seamless media key and desktop widget controls across Linux desktop environments.
+* **Windows Integration:** Native Windows support with media controls and system integration.
 
 ## 🚀 Installation
-Head over to the [Releases](../../releases) page to download the latest version for Linux.
+Head over to the [Releases](https://github.com/citzeye/loonix-tunes-windows/releases) page to download the latest version for Windows.
 
-We provide two simple ways to run Loonix-Tunes on any Linux distribution:
-1. **AppImage:** Download the `.AppImage` file, make it executable (`chmod +x`), and run it directly.
-2. **Portable Tarball:** Download the `.tar.gz` file, extract it, and run the included `./loonix-tunes.sh` script. No system-wide installation required.
+We provide two simple ways to run Loonix-Tunes on Windows:
+1. **Installer:** Download the `.exe` installer and follow the installation wizard.
+2. **Portable:** Download the `.zip` file, extract it, and run `LoonixTunesWin64v2.exe` directly. No installation required.
 
 
 ## 🛠️ Building from Source
 
-If you prefer to compile Loonix-Tunes yourself, ensure you have the Rust toolchain, Qt6, and FFmpeg development headers installed on your Linux machine.
+If you prefer to compile Loonix-Tunes yourself, ensure you have the following installed on your Windows machine:
+- Rust toolchain (rustup)
+- Qt 6.8+ (MSVC 2022)
+- FFmpeg development libraries
+- Inno Setup 6 (for building the installer)
 
 ```bash
-git clone [https://github.com/citzeye/loonix-tunes-linux.git](https://github.com/citzeye/loonix-tunes-linux.git)
-cd loonix-tunes-linux
-cargo build --release
+git clone https://github.com/citzeye/loonix-tunes-windows.git
+cd loonix-tunes-windows
+cd packaging/windows
+.\deploy.ps1
 ```
 
-🤝 Issues, and feature requests are welcome! Feel free to check the issues page.
+The build script will:
+1. Compile the release binary
+2. Deploy Qt runtime and QML files
+3. Copy FFmpeg DLLs
+4. Create a portable ZIP (`LoonixTunesWin64v2.zip`)
+5. Build the installer (`LoonixTunesWin64v2.exe`)
+
+🤝 Issues and feature requests are welcome! Feel free to check the [issues page](https://github.com/citzeye/loonix-tunes-windows/issues).
 
 Created with ❤️ by citzeye
-
-

@@ -1,4 +1,4 @@
-name: Linux Release Build
+name: Windows Release Build
 
 on:
   push:
@@ -9,137 +9,95 @@ permissions:
   contents: write
 
 jobs:
-  # --- BUILD LINUX ---
-  linux-release:
-    runs-on: ubuntu-22.04
+  # --- BUILD WINDOWS ---
+  windows-release:
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Install System Dependencies
-        run: |
-          sudo add-apt-repository -y ppa:pipewire-debian/pipewire-upstream
-          sudo apt-get update
-          sudo apt-get install -y \
-            libfuse2 \
-            libxcb-cursor0 \
-            ffmpeg libavcodec-dev libavformat-dev libavfilter-dev libavdevice-dev libavutil-dev libswresample-dev \
-            pipewire libpipewire-0.3-dev \
-            libwayland-dev libasound2-dev librubberband-dev libsoxr-dev libfftw3-dev \
-            libdbus-1-dev libglib2.0-dev libgl1-mesa-dev libegl1-mesa-dev libxkbcommon-dev \
-            ruby ruby-dev rubygems build-essential rpm # Tambahan untuk FPM
 
-      - name: Install FPM (For DEB/RPM Packaging)
-        run: sudo gem install fpm
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: x86_64-pc-windows-msvc
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v3
         with:
-          version: '6.6.2'
+          version: '6.8.3'
+          arch: 'win64_msvc2022_64'
           modules: 'qtmultimedia qt5compat'
 
-      - name: Build Rust
-        run: cargo build --release
-
-      - name: Bundle AppImage & Prepare AppDir
+      - name: Install Inno Setup
         run: |
-          rm -f $Qt6_DIR/plugins/sqldrivers/libqsqlmimer.so
-          rm -f $Qt6_DIR/plugins/sqldrivers/libqsqlmysql.so
-          rm -f $Qt6_DIR/plugins/sqldrivers/libqsqlpsql.so
-          rm -f $Qt6_DIR/plugins/sqldrivers/libqsqlodbc.so
+          choco install innosetup -y
 
-          mkdir -p AppDir/usr/bin
-          mkdir -p AppDir/usr/share/applications
-          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
-          cp target/release/loonix-tunes AppDir/usr/bin/
-          cp packaging/linux/loonix-tunes.desktop AppDir/usr/share/applications/
-          cp packaging/linux/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/loonix-tunes.png
-
-          sed -i 's/\r$//' AppDir/usr/share/applications/loonix-tunes.desktop
-
-          wget -c https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage
-          chmod +x linuxdeployqt-continuous-x86_64.AppImage
-
-          export PATH=$Qt6_DIR/bin:$PATH
-          export LD_LIBRARY_PATH=$Qt6_DIR/lib:$LD_LIBRARY_PATH
-          
-          # Jalankan bundling
-          ./linuxdeployqt-continuous-x86_64.AppImage \
-            AppDir/usr/share/applications/loonix-tunes.desktop \
-            -appimage \
-            -qmldir=qml \
-            -verbose=2
-
-          # Rename AppImage
-          mv Loonix-Tunes-*-x86_64.AppImage Loonix-Tunes-${{ github.ref_name }}-x86_64.AppImage
-
-      - name: Package DEB and RPM
+      - name: Build Release
         run: |
-          export VERSION=${GITHUB_REF_NAME#v}
-          
-          # Buat struktur direktori virtual untuk DEB/RPM
-          # Instalasi di arahkan ke /opt/loonix-tunes biar terisolasi dan rapi
-          mkdir -p pkg_root/opt/loonix-tunes
-          cp -r AppDir/* pkg_root/opt/loonix-tunes/
+          cargo build --release
 
-          # Symlink AppRun ke /usr/bin biar user bisa ketik 'loonix-tunes' di terminal
-          mkdir -p pkg_root/usr/bin
-          ln -s /opt/loonix-tunes/AppRun pkg_root/usr/bin/loonix-tunes
-
-          # Copy Desktop file & Icon ke root system biar kebaca sama DE (GNOME/KDE/LOONIX)
-          mkdir -p pkg_root/usr/share/applications
-          mkdir -p pkg_root/usr/share/icons/hicolor/256x256/apps
-          cp packaging/linux/loonix-tunes.desktop pkg_root/usr/share/applications/
-          cp packaging/linux/icon.png pkg_root/usr/share/icons/hicolor/256x256/apps/loonix-tunes.png
-
-          # Bikin file .deb
-          fpm -s dir -t deb \
-            -n loonix-tunes \
-            -v $VERSION \
-            -C pkg_root \
-            --prefix / \
-            --description "Efficient, Native, and Fast Audio Player." \
-            .
-
-          # Bikin file .rpm
-          fpm -s dir -t rpm \
-            -n loonix-tunes \
-            -v $VERSION \
-            -C pkg_root \
-            --prefix / \
-            --description "Efficient, Native, and Fast Audio Player." \
-            .
-
-      - name: Create Portable Tarball
+      - name: Prepare Dist Folder
         run: |
-          mkdir -p loonix-tunes-portable
-          cp target/release/loonix-tunes loonix-tunes-portable/loonix-tunes
-          tar -czvf loonix-tunes-linux-x64-portable.tar.gz loonix-tunes-portable/
+          $dist = "packaging\windows\dist"
+          if (Test-Path $dist) { Remove-Item $dist -Recurse -Force }
+          New-Item -ItemType Directory -Path $dist | Out-Null
 
-      - name: Upload All Linux Artifacts
+          # Copy binary (cargo outputs LoonixTunesWin64v2.exe now)
+          Copy-Item "target\release\LoonixTunesWin64v2.exe" "$dist\LoonixTunesWin64v2.exe"
+
+          # Copy QML files
+          Copy-Item -Path "qml" -Destination "$dist\qml" -Recurse -Force
+
+      - name: Deploy Qt Runtime
+        run: |
+          $qtDir = "C:\Qt\6.8.3\msvc2022_64\bin"
+          $dist = "packaging\windows\dist"
+          & "$qtDir\windeployqt.exe" --release --qmldir "qml" "$dist\LoonixTunesWin64v2.exe"
+
+      - name: Copy FFmpeg DLLs
+        run: |
+          $ffmpegPath = "C:\dev\ffmpeg\bin"
+          $dist = "packaging\windows\dist"
+          if (Test-Path $ffmpegPath) {
+            Copy-Item "$ffmpegPath\av*.dll" $dist
+            Copy-Item "$ffmpegPath\sw*.dll" $dist
+          }
+
+      - name: Create Portable ZIP
+        run: |
+          $dist = "packaging\windows\dist"
+          $zipPath = "packaging\windows\LoonixTunesWin64v2.zip"
+          Compress-Archive -Path "$dist\*" -DestinationPath $zipPath -Force
+
+      - name: Build Installer
+        run: |
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          & $iscc "packaging\windows\loonix-tunes-setup.iss"
+
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: loonix-tunes-linux-packages
+          name: loonix-tunes-windows-packages
           path: |
-            *.AppImage
-            *.tar.gz
-            *.deb
-            *.rpm
+            packaging/windows/LoonixTunesWin64v2.zip
+            Output/LoonixTunesWin64v2.exe
 
   # --- PUBLISH EVERYTHING ---
   publish:
-    needs: [linux-release]
-    runs-on: ubuntu-latest
+    needs: [windows-release]
+    runs-on: windows-latest
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            **/*.AppImage
-            **/*.tar.gz
-            **/*.deb
-            **/*.rpm
-          body: "Loonix-Tunes ${{ github.ref_name }} Release 🚀\n\nEfficient, Native, and Fast."
+            artifacts/**/LoonixTunesWin64v2.zip
+            artifacts/**/LoonixTunesWin64v2.exe
+          body: "Loonix-Tunes ${{ github.ref_name }} Release 🚀\n\nEfficient, Native, and Fast. Windows Edition."
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
