@@ -1,0 +1,29 @@
+<RCC>
+    <qresource prefix="/">
+        <file>Ui.qml</file>
+        <file>ui/Tab.qml</file>
+        <file>ui/TabMusic.qml</file>
+        <file>ui/TabCustom.qml</file>
+        <file>ui/Eq.qml</file>
+        <file>ui/Fx.qml</file>
+        <file>ui/TrackInfo.qml</file>
+        <file>ui/Playlist.qml</file>
+        <file>ui/qmldir</file>
+        <file alias="fonts/KodeMono-VariableFont_wght.ttf">../assets/fonts/KodeMono-VariableFont_wght.ttf</file>
+        <file alias="fonts/SymbolsNerdFont-Regular.ttf">../assets/fonts/SymbolsNerdFont-Regular.ttf</file>
+        <file alias="fonts/twemoji.ttf">../assets/fonts/twemoji.ttf</file>
+        <file alias="fonts/Oswald-Regular.ttf">../assets/fonts/Oswald-Regular.ttf</file>
+        <file alias="assets/images/saweriaqrcode.png">../assets/images/saweriaqrcode.png</file>
+        <file alias="assets/images/kofiqrcode.png">../assets/images/kofiqrcode.png</file>
+        <file>ui/pref/PrefAbout.qml</file>
+        <file>ui/pref/PrefAppearance.qml</file>
+        <file>ui/pref/PrefDonate.qml</file>
+        <file>ui/pref/PrefSwitch.qml</file>
+        <file>ui/pref/PrefTab.qml</file>
+        <file>ui/pref/PrefReportBug.qml</file>
+        <file>ui/pref/PrefThemeEditor.qml</file>
+        <file>ui/contextmenu/TabContextMenu.qml</file>
+        <file>ui/contextmenu/PlaylistContextMenu.qml</file>
+        <file>ui/contextmenu/AppearanceContextMenu.qml</file>
+    </qresource>
+</RCC>

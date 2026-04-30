@@ -1,0 +1,46 @@
+/* --- loonixtunesv2/qml/ui/tabs/TabQueue.qml | TabQueue --- */
+
+import QtQuick
+import QtQuick.Layouts
+import QtQuick.Controls
+import Qt.labs.platform
+
+// QUEUE tab | 
+Rectangle {
+  id: queueTab
+  width: 30
+  height: 20
+  visible: true
+  property bool isActive: musicModel.current_folder_qml.toUpperCase() === 'QUEUE'
+  property bool hasItems: musicModel.queue_count > 0
+  color: isActive || tabMA_queue.containsMouse ? theme.colormap.bgoverlay : 'transparent'
+  radius: 4
+  border.width: 1
+  antialiasing: false
+  border.color: hasItems 
+    ? (isActive ? theme.colormap.tabhover : theme.colormap.playerhover)
+    : theme.colormap.tabborder
+
+  Text {
+    anchors.centerIn: parent
+    text: ''
+    font.family: symbols.name
+    font.pixelSize: 12
+    font.bold: parent.isActive
+    color: hasItems ? theme.colormap.tabtext : theme.colormap.tabborder
+  }
+
+  MouseArea {
+    id: tabMA_queue
+    anchors.fill: parent
+    hoverEnabled: true
+    acceptedButtons: Qt.LeftButton
+    onClicked: function(mouse) {
+      if (mouse.button === Qt.LeftButton) {
+        musicModel.switch_to_queue()
+      }
+    }
+  }
+
+
+}

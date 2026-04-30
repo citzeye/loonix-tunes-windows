@@ -1,0 +1,49 @@
+[package]
+name = "loonix-tunes"
+version = "2.0.0"
+edition = "2021"
+authors = ["citz"]
+description = "Loonix Tunes - Native Desktop Music Player for Windows"
+license = "GPL-3.0"
+
+[package.metadata.wix]
+eula = false
+
+[dependencies]
+# --- CORE AUDIO ENGINE (Universal) ---
+ffmpeg-next = "8.0"
+ringbuf = "0.4"
+biquad = "0.6.0"
+dasp = "0.11"
+freeverb = "0.2.0"
+crossbeam = "0.8"
+arc-swap = "1.6"
+memmap2 = "0.9"
+parking_lot = "0.12"
+libc = "0.2"
+
+# --- WINDOWS ONLY: Audio Backend, Media Controls, UI, and System ---
+[target.'cfg(target_os = "windows")'.dependencies]
+qmetaobject = "0.2.10"
+cpal = "0.15"
+# souvlaki = "0.7"  # Disabled for now
+windows-sys = { version = "0.52", features = ["Win32_Media_Audio", "Win32_Devices_Properties"] }
+trash = "5.2.5"
+which = "6.0"
+
+# --- UI & UTILS (Universal) ---
+cstr = "0.2"
+dirs = "6.0.0"
+rand = "0.10.0"
+rfd = "0.17.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+reqwest = { version = "0.13.2", features = ["blocking", "json"] }
+webbrowser = "1.0"
+
+url = "2.5.8"
+urlencoding = "2.1"
+crossbeam-channel = "0.5.15"
+
+[build-dependencies]
+winres = "0.1"

@@ -1,0 +1,145 @@
+name: Linux Release Build
+
+on:
+  push:
+    tags:
+      - "v*" # Trigger: git tag v2.0.0 && git push origin v2.0.0
+
+permissions:
+  contents: write
+
+jobs:
+  # --- BUILD LINUX ---
+  linux-release:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install System Dependencies
+        run: |
+          sudo add-apt-repository -y ppa:pipewire-debian/pipewire-upstream
+          sudo apt-get update
+          sudo apt-get install -y \
+            libfuse2 \
+            libxcb-cursor0 \
+            ffmpeg libavcodec-dev libavformat-dev libavfilter-dev libavdevice-dev libavutil-dev libswresample-dev \
+            pipewire libpipewire-0.3-dev \
+            libwayland-dev libasound2-dev librubberband-dev libsoxr-dev libfftw3-dev \
+            libdbus-1-dev libglib2.0-dev libgl1-mesa-dev libegl1-mesa-dev libxkbcommon-dev \
+            ruby ruby-dev rubygems build-essential rpm # Tambahan untuk FPM
+
+      - name: Install FPM (For DEB/RPM Packaging)
+        run: sudo gem install fpm
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.6.2'
+          modules: 'qtmultimedia qt5compat'
+
+      - name: Build Rust
+        run: cargo build --release
+
+      - name: Bundle AppImage & Prepare AppDir
+        run: |
+          rm -f $Qt6_DIR/plugins/sqldrivers/libqsqlmimer.so
+          rm -f $Qt6_DIR/plugins/sqldrivers/libqsqlmysql.so
+          rm -f $Qt6_DIR/plugins/sqldrivers/libqsqlpsql.so
+          rm -f $Qt6_DIR/plugins/sqldrivers/libqsqlodbc.so
+
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/share/applications
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          cp target/release/loonix-tunes AppDir/usr/bin/
+          cp packaging/linux/loonix-tunes.desktop AppDir/usr/share/applications/
+          cp packaging/linux/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/loonix-tunes.png
+
+          sed -i 's/\r$//' AppDir/usr/share/applications/loonix-tunes.desktop
+
+          wget -c https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage
+          chmod +x linuxdeployqt-continuous-x86_64.AppImage
+
+          export PATH=$Qt6_DIR/bin:$PATH
+          export LD_LIBRARY_PATH=$Qt6_DIR/lib:$LD_LIBRARY_PATH
+          
+          # Jalankan bundling
+          ./linuxdeployqt-continuous-x86_64.AppImage \
+            AppDir/usr/share/applications/loonix-tunes.desktop \
+            -appimage \
+            -qmldir=qml \
+            -verbose=2
+
+          # Rename AppImage
+          mv Loonix-Tunes-*-x86_64.AppImage Loonix-Tunes-${{ github.ref_name }}-x86_64.AppImage
+
+      - name: Package DEB and RPM
+        run: |
+          export VERSION=${GITHUB_REF_NAME#v}
+          
+          # Buat struktur direktori virtual untuk DEB/RPM
+          # Instalasi di arahkan ke /opt/loonix-tunes biar terisolasi dan rapi
+          mkdir -p pkg_root/opt/loonix-tunes
+          cp -r AppDir/* pkg_root/opt/loonix-tunes/
+
+          # Symlink AppRun ke /usr/bin biar user bisa ketik 'loonix-tunes' di terminal
+          mkdir -p pkg_root/usr/bin
+          ln -s /opt/loonix-tunes/AppRun pkg_root/usr/bin/loonix-tunes
+
+          # Copy Desktop file & Icon ke root system biar kebaca sama DE (GNOME/KDE/LOONIX)
+          mkdir -p pkg_root/usr/share/applications
+          mkdir -p pkg_root/usr/share/icons/hicolor/256x256/apps
+          cp packaging/linux/loonix-tunes.desktop pkg_root/usr/share/applications/
+          cp packaging/linux/icon.png pkg_root/usr/share/icons/hicolor/256x256/apps/loonix-tunes.png
+
+          # Bikin file .deb
+          fpm -s dir -t deb \
+            -n loonix-tunes \
+            -v $VERSION \
+            -C pkg_root \
+            --prefix / \
+            --description "Efficient, Native, and Fast Audio Player." \
+            .
+
+          # Bikin file .rpm
+          fpm -s dir -t rpm \
+            -n loonix-tunes \
+            -v $VERSION \
+            -C pkg_root \
+            --prefix / \
+            --description "Efficient, Native, and Fast Audio Player." \
+            .
+
+      - name: Create Portable Tarball
+        run: |
+          mkdir -p loonix-tunes-portable
+          cp target/release/loonix-tunes loonix-tunes-portable/loonix-tunes
+          tar -czvf loonix-tunes-linux-x64-portable.tar.gz loonix-tunes-portable/
+
+      - name: Upload All Linux Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: loonix-tunes-linux-packages
+          path: |
+            *.AppImage
+            *.tar.gz
+            *.deb
+            *.rpm
+
+  # --- PUBLISH EVERYTHING ---
+  publish:
+    needs: [linux-release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            **/*.AppImage
+            **/*.tar.gz
+            **/*.deb
+            **/*.rpm
+          body: "Loonix-Tunes ${{ github.ref_name }} Release 🚀\n\nEfficient, Native, and Fast."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

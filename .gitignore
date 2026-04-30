@@ -1,0 +1,25 @@
+# Loonix-tunes ignore
+*.log
+bin/
+obj/
+.DS_Store
+Cargo.lock
+node_modules
+/target
+
+# Editor & OS
+*.swp
+*.swo
+
+# Build output
+dist/
+*.zip
+Output/
+
+# AI
+graphify-out
+AGENTS.md
+.skill
+.backup
+.opencode
+**/*.rs.bk
