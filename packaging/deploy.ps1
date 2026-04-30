@@ -5,8 +5,8 @@ Write-Host "Loonix Tunes - Production Deploy"
 Write-Host "=========================================="
 
 $dist = "dist"
-$vendorQt = "..\..\vendor\qt"
-$vendorBin = "..\..\vendor\bin"
+$vendorQt = "..\vendor\qt"
+$vendorBin = "..\vendor\bin"
 
 Write-Host "[1/4] Cleaning up dist folder..."
 if (Test-Path $dist) { Remove-Item -Path $dist -Recurse -Force }
@@ -16,7 +16,7 @@ Write-Host "[2/4] Building release..."
 cargo build --release
 
 Write-Host "[3/4] Copying binary and dependencies..."
-Copy-Item "..\..\target\release\LoonixTunesWin64v2.exe" "$dist\LoonixTunesWin64v2.exe"
+Copy-Item "..\target\release\LoonixTunesWin64v2.exe" "$dist\LoonixTunesWin64v2.exe"
 Copy-Item "$vendorBin\*.dll" $dist
 
 Write-Host "[4/4] Copying Qt Runtime (from vendor/qt)..."

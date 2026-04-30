@@ -12,11 +12,16 @@ fn main() {
 
         // 2. Link libraries from vendor/lib
         println!("cargo:rustc-link-lib=rubberband");
+        println!("cargo:rustc-link-lib=samplerate");
+        println!("cargo:rustc-link-lib=sleef");
+        println!("cargo:rustc-link-lib=sleefdft");
         println!("cargo:rustc-link-lib=avcodec");
         println!("cargo:rustc-link-lib=avdevice");
+        println!("cargo:rustc-link-lib=avfilter");
         println!("cargo:rustc-link-lib=avformat");
         println!("cargo:rustc-link-lib=avutil");
         println!("cargo:rustc-link-lib=swresample");
+        println!("cargo:rustc-link-lib=swscale");
 
         // 3. Copy DLLs from vendor/bin to target directory for cargo run
         copy_vendor_dlls(&vendor_bin, &project_dir);
@@ -27,7 +32,7 @@ fn main() {
         }
 
         // Metadata & Icon Windows
-        let icon_path = format!("{}/packaging/windows/icon.ico", project_dir);
+        let icon_path = format!("{}/packaging/icon.ico", project_dir);
         let out_dir = std::env::var("OUT_DIR").unwrap();
         let rc_path = format!("{}/resource.rc", out_dir);
         let res_path = format!("{}/resource.res", out_dir);
