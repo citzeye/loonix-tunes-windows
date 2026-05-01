@@ -1,10 +1,10 @@
 /* --- loonixtunesv2/src/audio/engine/engine.rs | engine --- */
 
+use crate::audio::dsp::DspSettings;
+use crate::audio::io::audiooutput::AudioOutput;
 use crate::audio::io::audiooutput::OutputState;
 use crate::audio::io::decoder;
-use crate::audio::io::audiooutput::AudioOutput;
 use crate::audio::io::decoder::{DecoderControl, DecoderEvent, DecoderHandle};
-use crate::audio::dsp::DspSettings;
 use crate::core::library::scanner;
 use ringbuf::traits::Split;
 use ringbuf::{HeapProd, HeapRb};
@@ -193,7 +193,11 @@ impl Engine {
     /* START AUDIO                                      */
     /* ------------------------------------------------ */
 
-    pub fn start_audiooutput(&mut self, path: String, ab_loop: Arc<Mutex<crate::audio::engine::abloop::ABLoop>>) {
+    pub fn start_audiooutput(
+        &mut self,
+        path: String,
+        ab_loop: Arc<Mutex<crate::audio::engine::abloop::ABLoop>>,
+    ) {
         // State transition: Stopped -> Loading
         self.playback_state = PlaybackState::Loading;
 
@@ -239,13 +243,13 @@ impl Engine {
         // 6. Spawn Decoder Thread
         let path_clone = path.clone();
         if let Some(producer) = self.producer.take() {
-self.decoder_handle = Some(decoder::spawn_decoder_with_sample_rate(
-    path_clone,
-    producer,
-    control_for_decoder.clone(),
-    actual_sample_rate,
-    ab_loop.clone(),
-));
+            self.decoder_handle = Some(decoder::spawn_decoder_with_sample_rate(
+                path_clone,
+                producer,
+                control_for_decoder.clone(),
+                actual_sample_rate,
+                ab_loop.clone(),
+            ));
         } else {
             eprintln!("[Engine] Failed to start playback: producer not available");
             return;
@@ -309,9 +313,7 @@ self.decoder_handle = Some(decoder::spawn_decoder_with_sample_rate(
                                 self.samples_played = 0;
                                 if let Some(ref mut audiooutput) = self.audiooutput {
                                     audiooutput.reset_samples_played(0);
-                                    audiooutput.set_output_state(
-                                         OutputState::Running,
-                                    );
+                                    audiooutput.set_output_state(OutputState::Running);
                                 }
                             }
                             PlaybackState::Paused => {
@@ -803,7 +805,7 @@ impl FfmpegEngine {
         true_peak_dbtp: f32,
         max_gain_db: f32,
     ) {
-        self.scan_params.target_lufs = target_lufs;
+        self.scan_params.target_dbfs = target_lufs;
         self.scan_params.true_peak_dbtp = true_peak_dbtp;
         self.scan_params.max_gain_db = max_gain_db;
         // Params changed - invalidate cache so next play re-scans

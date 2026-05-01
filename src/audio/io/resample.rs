@@ -87,17 +87,15 @@ impl StereoResampler {
             })
         }
     }
-    
+
     pub fn process(&mut self, input: &[[f32; 2]]) -> Vec<[f32; 2]> {
         let in_frames = input.len();
         if in_frames == 0 {
             return Vec::new();
         }
 
-        let max_output = (in_frames as f64
-            * self.output_rate as f64
-            / self.input_rate as f64) as usize
-            + 64;
+        let max_output =
+            (in_frames as f64 * self.output_rate as f64 / self.input_rate as f64) as usize + 64;
 
         // === Split planar input ===
         let mut in_left: Vec<f32> = Vec::with_capacity(in_frames);
@@ -146,7 +144,7 @@ impl StereoResampler {
 
         result
     }
-    
+
     pub fn drain(&mut self) -> Vec<[f32; 2]> {
         let max_output = 1024;
 
@@ -214,7 +212,7 @@ pub fn process_frame(
         unsafe { std::slice::from_raw_parts(input_flat.as_ptr() as *const [f32; 2], input_frames) };
 
     let processed = resampler.process(input_stereo);
-    
+
     if !processed.is_empty() {
         push_output(&processed, processed.len(), producer, total_decoded_samples);
     }
@@ -240,7 +238,7 @@ pub fn process_frame_buffered(
         unsafe { std::slice::from_raw_parts(input_flat.as_ptr() as *const [f32; 2], input_frames) };
 
     let processed = resampler.process(input_stereo);
-    
+
     if !processed.is_empty() {
         let flat_len = processed.len() * 2;
         *buffered += flat_len as u64;
@@ -258,12 +256,12 @@ pub fn drain(
         if should_stop.load(Ordering::Relaxed) {
             break;
         }
-        
+
         let output = resampler.drain();
         if output.is_empty() {
             break;
         }
-        
+
         push_output(&output, output.len(), producer, total_decoded_samples);
     }
 }
@@ -285,7 +283,10 @@ fn push_output(
                 pushed += n;
                 *total_decoded_samples += n as u64;
             }
-            _ => std::thread::yield_now(),
+            _ => {
+                // Buffer is full - sleep briefly to avoid busy-wait
+                std::thread::sleep(std::time::Duration::from_millis(1));
+            }
         }
     }
 }

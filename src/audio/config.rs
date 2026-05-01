@@ -91,9 +91,13 @@ impl DspConfig {
 
     pub fn dsp_user_template() -> Self {
         use crate::core::config::presets::EQ_PRESETS;
-        let built_in_presets: Vec<BuiltInPreset> = EQ_PRESETS.iter()
+        let built_in_presets: Vec<BuiltInPreset> = EQ_PRESETS
+            .iter()
             .enumerate()
-            .map(|(i, p)| BuiltInPreset { id: i as i32, name: p.name.to_string() })
+            .map(|(i, p)| BuiltInPreset {
+                id: i as i32,
+                name: p.name.to_string(),
+            })
             .collect();
         let built_in_presets: [BuiltInPreset; 6] = [
             built_in_presets[0].clone(),
@@ -162,11 +166,22 @@ impl DspConfig {
 impl Default for DspConfig {
     fn default() -> Self {
         use crate::core::config::presets::EQ_PRESETS;
-        let built_in: Vec<BuiltInPreset> = EQ_PRESETS.iter()
+        let built_in: Vec<BuiltInPreset> = EQ_PRESETS
+            .iter()
             .enumerate()
-            .map(|(i, p)| BuiltInPreset { id: i as i32, name: p.name.to_string() })
+            .map(|(i, p)| BuiltInPreset {
+                id: i as i32,
+                name: p.name.to_string(),
+            })
             .collect();
-        let bis = [built_in[0].clone(), built_in[1].clone(), built_in[2].clone(), built_in[3].clone(), built_in[4].clone(), built_in[5].clone()];
+        let bis = [
+            built_in[0].clone(),
+            built_in[1].clone(),
+            built_in[2].clone(),
+            built_in[3].clone(),
+            built_in[4].clone(),
+            built_in[5].clone(),
+        ];
         Self {
             version: "2.0".into(),
             dsp_enabled: true,
@@ -232,8 +247,8 @@ pub struct AppConfig {
     // Normalizer settings (stored in config.json)
     #[serde(default)]
     pub normalizer_enabled: bool,
-    #[serde(default = "default_norm_target_lufs")]
-    pub normalizer_target_lufs: f32,
+    #[serde(default = "default_norm_target_dbfs")]
+    pub normalizer_target_dbfs: f32,
     #[serde(default = "default_norm_true_peak")]
     pub normalizer_true_peak_dbtp: f32,
     #[serde(default = "default_norm_max_gain")]
@@ -242,8 +257,8 @@ pub struct AppConfig {
     pub normalizer_smoothing: f32,
 }
 
-fn default_norm_target_lufs() -> f32 {
-    -14.0
+fn default_norm_target_dbfs() -> f32 {
+    -16.0
 }
 fn default_norm_true_peak() -> f32 {
     -1.5
@@ -273,7 +288,7 @@ impl Default for AppConfig {
             window_width: 350,
             window_height: 700,
             normalizer_enabled: true,
-            normalizer_target_lufs: default_norm_target_lufs(),
+             normalizer_target_dbfs: default_norm_target_dbfs(),
             normalizer_true_peak_dbtp: default_norm_true_peak(),
             normalizer_max_gain_db: default_norm_max_gain(),
             normalizer_smoothing: default_norm_smoothing(),

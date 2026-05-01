@@ -1,8 +1,9 @@
 /* --- loonixtunesv2/src/ui/components/theme.rs | theme --- */
 
-
 use qmetaobject::prelude::*;
-use qmetaobject::{QAbstractListModel, QByteArray, QModelIndex, QVariant, QVariantList, QVariantMap};
+use qmetaobject::{
+    QAbstractListModel, QByteArray, QModelIndex, QVariant, QVariantList, QVariantMap,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -37,7 +38,10 @@ impl QAbstractListModel for CustomThemeListModel {
                 let mut map = QVariantMap::default();
                 if let Some(ref colors) = item.colors {
                     for (k, v) in colors {
-                        map.insert(QString::from(k.as_str()), QVariant::from(QString::from(v.as_str())));
+                        map.insert(
+                            QString::from(k.as_str()),
+                            QVariant::from(QString::from(v.as_str())),
+                        );
                     }
                 }
                 map.into()
@@ -100,7 +104,7 @@ impl ThemeConfig {
     }
 
     pub fn user_template_colors() -> HashMap<String, String> {
-    let mut map = HashMap::new();
+        let mut map = HashMap::new();
 
         // --- Global & Backgrounds ---
         map.insert("bgmain".to_string(), "#121212".to_string());
@@ -207,17 +211,61 @@ impl Default for ThemeConfig {
         Self {
             active_theme: "Loonix".to_string(),
             themes: vec![
-                ThemeEntry { name: "Loonix".to_string(), is_active: true, colors: None },
-                ThemeEntry { name: "Blue".to_string(), is_active: false, colors: None },
-                ThemeEntry { name: "Green".to_string(), is_active: false, colors: None },
-                ThemeEntry { name: "Monochrome".to_string(), is_active: false, colors: None },
-                ThemeEntry { name: "Orange".to_string(), is_active: false, colors: None },
-                ThemeEntry { name: "Pink".to_string(), is_active: false, colors: None },
-                ThemeEntry { name: "Red".to_string(), is_active: false, colors: None },
-                ThemeEntry { name: "Yellow".to_string(), is_active: false, colors: None },
-                ThemeEntry { name: "Custom 1".to_string(), is_active: false, colors: Some(blue_colors.clone()) },
-                ThemeEntry { name: "Custom 2".to_string(), is_active: false, colors: Some(blue_colors.clone()) },
-                ThemeEntry { name: "Custom 3".to_string(), is_active: false, colors: Some(blue_colors) },
+                ThemeEntry {
+                    name: "Loonix".to_string(),
+                    is_active: true,
+                    colors: None,
+                },
+                ThemeEntry {
+                    name: "Blue".to_string(),
+                    is_active: false,
+                    colors: None,
+                },
+                ThemeEntry {
+                    name: "Green".to_string(),
+                    is_active: false,
+                    colors: None,
+                },
+                ThemeEntry {
+                    name: "Monochrome".to_string(),
+                    is_active: false,
+                    colors: None,
+                },
+                ThemeEntry {
+                    name: "Orange".to_string(),
+                    is_active: false,
+                    colors: None,
+                },
+                ThemeEntry {
+                    name: "Pink".to_string(),
+                    is_active: false,
+                    colors: None,
+                },
+                ThemeEntry {
+                    name: "Red".to_string(),
+                    is_active: false,
+                    colors: None,
+                },
+                ThemeEntry {
+                    name: "Yellow".to_string(),
+                    is_active: false,
+                    colors: None,
+                },
+                ThemeEntry {
+                    name: "Custom 1".to_string(),
+                    is_active: false,
+                    colors: Some(blue_colors.clone()),
+                },
+                ThemeEntry {
+                    name: "Custom 2".to_string(),
+                    is_active: false,
+                    colors: Some(blue_colors.clone()),
+                },
+                ThemeEntry {
+                    name: "Custom 3".to_string(),
+                    is_active: false,
+                    colors: Some(blue_colors),
+                },
             ],
         }
     }
@@ -256,7 +304,6 @@ pub struct ThemeManager {
     themes: Vec<ThemeEntry>,
     current_raw_colors: HashMap<String, String>,
     config: Option<Arc<Mutex<AppConfig>>>,
-
 }
 
 impl ThemeManager {
@@ -272,7 +319,8 @@ impl ThemeManager {
         self.config = Some(config);
 
         // Find active theme
-        let active_name = self.themes
+        let active_name = self
+            .themes
             .iter()
             .find(|t| t.is_active)
             .map(|t| t.name.clone())
@@ -331,12 +379,14 @@ impl ThemeManager {
                         })
                         .collect();
                 }
-                c.iter().map(|(k, v)| {
-                    (
-                        QString::from(k.as_str()),
-                        QVariant::from(QString::from(v.as_str())),
-                    )
-                }).collect()
+                c.iter()
+                    .map(|(k, v)| {
+                        (
+                            QString::from(k.as_str()),
+                            QVariant::from(QString::from(v.as_str())),
+                        )
+                    })
+                    .collect()
             } else {
                 QVariantMap::default()
             }
@@ -406,7 +456,10 @@ impl ThemeManager {
             .iter()
             .map(|t| {
                 let mut map = QVariantMap::default();
-                map.insert(QString::from("name"), QVariant::from(QString::from(t.name.clone())));
+                map.insert(
+                    QString::from("name"),
+                    QVariant::from(QString::from(t.name.clone())),
+                );
                 map.insert(QString::from("is_active"), QVariant::from(t.is_active));
                 QVariant::from(map)
             })
@@ -427,7 +480,10 @@ impl ThemeManager {
             .filter(|t| t.colors.is_some())
             .map(|t| {
                 let mut map = QVariantMap::default();
-                map.insert(QString::from("name"), QVariant::from(QString::from(t.name.clone())));
+                map.insert(
+                    QString::from("name"),
+                    QVariant::from(QString::from(t.name.clone())),
+                );
                 map.insert(QString::from("is_active"), QVariant::from(t.is_active));
                 QVariant::from(map)
             })
@@ -441,7 +497,10 @@ impl ThemeManager {
             .filter(|(_, t)| t.colors.is_some())
             .map(|(i, t)| {
                 let mut map = QVariantMap::default();
-                map.insert(QString::from("name"), QVariant::from(QString::from(t.name.clone())));
+                map.insert(
+                    QString::from("name"),
+                    QVariant::from(QString::from(t.name.clone())),
+                );
                 map.insert(QString::from("is_active"), QVariant::from(t.is_active));
                 map.insert(QString::from("original_index"), QVariant::from(i as i32));
                 QVariant::from(map)
@@ -461,12 +520,15 @@ impl ThemeManager {
                     if c.is_empty() {
                         return self.get_default_colors();
                     }
-                    return c.iter().map(|(k, v)| {
-                        (
-                            QString::from(k.as_str()),
-                            QVariant::from(QString::from(v.as_str())),
-                        )
-                    }).collect();
+                    return c
+                        .iter()
+                        .map(|(k, v)| {
+                            (
+                                QString::from(k.as_str()),
+                                QVariant::from(QString::from(v.as_str())),
+                            )
+                        })
+                        .collect();
                 }
             }
         }
@@ -563,7 +625,7 @@ impl ThemeManager {
         self.save_config();
     }
 
-fn get_builtin_colors(name: &str) -> HashMap<String, String> {
+    fn get_builtin_colors(name: &str) -> HashMap<String, String> {
         let mut map: HashMap<String, String> = HashMap::new();
 
         match name {
@@ -1069,7 +1131,7 @@ fn get_builtin_colors(name: &str) -> HashMap<String, String> {
                 });
             }
 
-            _ => { 
+            _ => {
                 map = Self::get_builtin_colors("Loonix");
             }
         }
@@ -1077,5 +1139,3 @@ fn get_builtin_colors(name: &str) -> HashMap<String, String> {
         map
     }
 }
-
-

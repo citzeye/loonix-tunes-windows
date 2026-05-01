@@ -14,7 +14,7 @@ pub fn get_surround_enabled_arc() -> &'static AtomicBool {
 }
 
 pub fn get_surround_width_arc() -> &'static AtomicU32 {
-    SURROUND_WIDTH.get_or_init(|| AtomicU32::new(1.3_f32.to_bits()))
+    SURROUND_WIDTH.get_or_init(|| AtomicU32::new(1.0_f32.to_bits()))
 }
 
 pub fn get_surround_bass_safe_arc() -> &'static AtomicU32 {
@@ -31,25 +31,36 @@ fn bits_to_f32(bits: u32) -> f32 {
 
 pub struct SurroundProcessor {
     current_width: f32,
-    current_bass_safe: f32,
+    target_width: f32,
+
     hp_prev_in: f32,
     hp_prev_out: f32,
     hp_coeff: f32,
+
+    smoothing_coeff: f32,
 }
 
 impl SurroundProcessor {
     pub fn new() -> Self {
-        let hp_cutoff = 250.0;
         let sample_rate = 48000.0;
+
+        // Bass protection cutoff (preserve drum thump - 60Hz allows fundamental bass frequencies)
+        let hp_cutoff = 60.0;
         let rc = 1.0 / (2.0 * std::f32::consts::PI * hp_cutoff);
         let dt = 1.0 / sample_rate;
         let hp_coeff = rc / (rc + dt);
+
+        // 5ms smoothing
+        let smoothing_time = 0.005;
+        let smoothing_coeff = (-1.0 / (sample_rate * smoothing_time)).exp();
+
         Self {
             current_width: 1.0,
-            current_bass_safe: 1.0,
+            target_width: 1.0,
             hp_prev_in: 0.0,
             hp_prev_out: 0.0,
             hp_coeff,
+            smoothing_coeff,
         }
     }
 
@@ -59,51 +70,71 @@ impl SurroundProcessor {
         self.hp_prev_out = out;
         out
     }
+
+    fn smooth_width(&mut self) {
+        self.current_width = self.current_width * self.smoothing_coeff
+            + self.target_width * (1.0 - self.smoothing_coeff);
+    }
 }
 
 impl DspProcessor for SurroundProcessor {
     fn process(&mut self, input: &[f32], output: &mut [f32]) {
         let is_on = get_surround_enabled_arc().load(Ordering::Relaxed);
-        let target_width = bits_to_f32(get_surround_width_arc().load(Ordering::Relaxed));
-        let bass_safe_val = bits_to_f32(get_surround_bass_safe_arc().load(Ordering::Relaxed));
+        let raw_width = bits_to_f32(get_surround_width_arc().load(Ordering::Relaxed));
+        let bass_safe = bits_to_f32(get_surround_bass_safe_arc().load(Ordering::Relaxed));
 
-        self.current_width = target_width * 2.0;
-        self.current_bass_safe = bass_safe_val;
-
-        if !is_on || (target_width - 0.5).abs() < 0.01 {
+        if !is_on {
             output.copy_from_slice(input);
             return;
         }
 
+        // Soft-limit width supaya tidak brutal
+        self.target_width = raw_width.clamp(0.0, 1.5);
+
         let len = input.len();
+
         for i in (0..len).step_by(2) {
             if i + 1 >= len {
                 output[i] = input[i];
                 break;
             }
 
-            let left_in = input[i];
-            let right_in = input[i + 1];
+            self.smooth_width();
 
-            let mid = (left_in + right_in) * 0.5;
-            let side = (left_in - right_in) * 0.5;
+            let left = input[i];
+            let right = input[i + 1];
 
-            let side_filtered = if self.current_bass_safe > 0.5 {
-                self.high_pass(side)
-            } else {
-                side
-            };
+            let mid = (left + right) * 0.5;
+            let mut side = (left - right) * 0.5;
 
-            let widened_side = side_filtered * self.current_width;
+            // Bass-safe high pass on side
+            if bass_safe > 0.5 {
+                side = self.high_pass(side);
+            }
 
-            output[i] = (mid + widened_side).clamp(-1.0, 1.0);
-            output[i + 1] = (mid - widened_side).clamp(-1.0, 1.0);
+            // Controlled widening (lebih natural)
+            let widened_side = side * self.current_width;
+
+            let mut l = mid + widened_side;
+            let mut r = mid - widened_side;
+
+            // RMS-style normalization (lebih smooth dari norm sederhana)
+            let energy = (l * l + r * r).sqrt();
+            if energy > 1.0 {
+                let inv = 1.0 / energy;
+                l *= inv;
+                r *= inv;
+            }
+
+            output[i] = l.clamp(-1.0, 1.0);
+            output[i + 1] = r.clamp(-1.0, 1.0);
         }
     }
 
     fn reset(&mut self) {
         self.hp_prev_in = 0.0;
         self.hp_prev_out = 0.0;
+        self.current_width = 1.0;
     }
 
     fn as_any(&mut self) -> &mut dyn std::any::Any {

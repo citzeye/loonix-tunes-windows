@@ -47,3 +47,10 @@ crossbeam-channel = "0.5.15"
 
 [build-dependencies]
 winres = "0.1"
+
+[profile.release]
+strip = true
+opt-level = "z"  # Optimize for size
+
+[profile.dev]
+opt-level = 3  # Maximum optimization for DSP modules during development

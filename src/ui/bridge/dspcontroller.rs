@@ -135,7 +135,7 @@ pub struct DspController {
     pub user_fx_reverb_mode: [i32; 6],
     pub user_fx_reverb_amount: [i32; 6],
 
-    pub normalizer_target_lufs: f64,
+    pub normalizer_target_dbfs: f64,
     pub normalizer_true_peak_dbtp: f64,
     pub normalizer_max_gain_db: f64,
     pub normalizer_smoothing: f64,
@@ -208,9 +208,7 @@ pub struct DspController {
 }
 
 impl DspController {
-    pub fn new(
-        ffmpeg: Arc<Mutex<crate::audio::engine::FfmpegEngine>>,
-    ) -> Self {
+    pub fn new(ffmpeg: Arc<Mutex<crate::audio::engine::FfmpegEngine>>) -> Self {
         let mut controller = Self::default();
         controller.eq_bands_raw = [0.0; 10];
         controller.eq_bands = QVariantList::default();
@@ -224,9 +222,9 @@ impl DspController {
 
     pub fn init_from_config(&mut self, config: &AppConfig) {
         // eprintln!("[DSP] init_from_config called - START");
-        
+
         self.normalizer_enabled = config.normalizer_enabled;
-        self.normalizer_target_lufs = config.normalizer_target_lufs as f64;
+        self.normalizer_target_dbfs = config.normalizer_target_dbfs as f64;
         self.normalizer_true_peak_dbtp = config.normalizer_true_peak_dbtp as f64;
         self.normalizer_max_gain_db = config.normalizer_max_gain_db as f64;
         self.normalizer_smoothing = config.normalizer_smoothing as f64;
@@ -288,7 +286,7 @@ impl DspController {
                 .store(!self.dsp_enabled, std::sync::atomic::Ordering::Relaxed);
             crate::audio::dsp::eqpreamp::get_preamp_enabled_arc()
                 .store(true, std::sync::atomic::Ordering::Relaxed); // Preamp always ON
-            // Convert dB from config to Linear for engine
+                                                                    // Convert dB from config to Linear for engine
             let linear_gain = if dsp_config.preamp_db != 0.0 {
                 10.0_f32.powf(dsp_config.preamp_db / 20.0)
             } else {
@@ -328,7 +326,7 @@ impl DspController {
             // Determine preset source
             let preset_index = dsp_config.active_preset_index.clamp(0, 11);
             // Reset to -1 to force load (avoid early return when same index)
-            self.active_preset_index = -1;  
+            self.active_preset_index = -1;
             let actual_index = preset_index;
             if preset_index <= 5 {
                 // Flow B: Factory preset (SSoT from preset.rs)
@@ -775,7 +773,7 @@ impl DspController {
 
     pub fn load_preset(&mut self, index: i32) {
         // eprintln!("[DSP] load_preset START - index: {}, current active_preset_index: {}", index, self.active_preset_index);
-        
+
         if index < 0 || index > 11 {
             // eprintln!("[DSP] load_preset: index out of range");
             return;
@@ -1203,17 +1201,17 @@ impl DspController {
     // ==========================================
     pub fn toggle_dsp(&mut self) {
         self.dsp_enabled = !self.dsp_enabled;
-        
+
         // Store to DSP Module Atomic (for Rack bypass)
         // INVERTED: dsp_bypass = true means DSP is OFF (bypass cosmetic chain)
         crate::audio::dsp::get_dsp_bypass_arc()
             .store(!self.dsp_enabled, std::sync::atomic::Ordering::Relaxed);
-        
+
         // Push to FfmpegEngine for real-time audio processing
         if let Ok(mut ff) = self.ffmpeg.lock() {
             ff.set_dsp_enabled(self.dsp_enabled);
         }
-        
+
         self.dsp_changed();
     }
 
@@ -1240,19 +1238,19 @@ impl DspController {
 
     pub fn set_preamp_gain(&mut self, gain: f64) {
         let clamped_db = gain.clamp(-20.0, 20.0) as f32;
-        
+
         // Convert dB to Linear gain before sending to engine
         // 0 dB → 1.0 linear, +6 dB → 2.0 linear, -6 dB → 0.5 linear
         let linear_gain = 10.0_f32.powf(clamped_db / 20.0);
-        
+
         crate::audio::dsp::eqpreamp::get_preamp_gain_arc()
             .store(linear_gain.to_bits(), std::sync::atomic::Ordering::Relaxed);
-        
+
         // Save dB value to config for UI display
         let mut dsp_cfg = crate::audio::config::DspConfig::load();
         dsp_cfg.preamp_db = clamped_db;
         let _ = dsp_cfg.save();
-        
+
         self.preamp_changed();
     }
 
@@ -1383,8 +1381,10 @@ impl DspController {
     pub fn set_surround_width(&mut self, val: f64) {
         let actual_width = val * 2.0;
         self.surround_width = actual_width;
-        crate::audio::dsp::surround::get_surround_width_arc()
-            .store((actual_width as f32).to_bits(), std::sync::atomic::Ordering::Relaxed);
+        crate::audio::dsp::surround::get_surround_width_arc().store(
+            (actual_width as f32).to_bits(),
+            std::sync::atomic::Ordering::Relaxed,
+        );
         self.surround_width_changed();
     }
 

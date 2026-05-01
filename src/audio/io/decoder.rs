@@ -334,7 +334,9 @@ fn decoder_loop(
                             if let Some(seek_to) = ab.check_loop(current_pos_secs) {
                                 let seek_ms = (seek_to * 1000.0) as i64;
                                 control.is_seeking.store(true, Ordering::Release);
-                                control.seek_request.store(seek_ms as u64, Ordering::Relaxed);
+                                control
+                                    .seek_request
+                                    .store(seek_ms as u64, Ordering::Relaxed);
                                 ab_loop_armed = false;
                             }
                         }
@@ -344,7 +346,6 @@ fn decoder_loop(
                     }
                 }
             }
-            
 
             let seek_state = control.seeking_state.load(Ordering::SeqCst);
 

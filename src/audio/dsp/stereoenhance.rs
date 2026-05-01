@@ -38,7 +38,6 @@ impl DspProcessor for StereoEnhance {
             return;
         }
 
-        let side_boost = 1.0 + (amount * 1.5);
         let len = input.len();
         let safe_len = len - (len % 2);
 
@@ -48,9 +47,9 @@ impl DspProcessor for StereoEnhance {
 
             let mid = (left + right) * 0.5;
             let side = (left - right) * 0.5;
-            let widened_side = side * side_boost;
-            let new_left = mid + widened_side;
-            let new_right = mid - widened_side;
+            let widened_side = side * amount; // Blend with dry signal
+            let new_left = left + widened_side;
+            let new_right = right - widened_side;
 
             output[i] = new_left;
             output[i + 1] = new_right;

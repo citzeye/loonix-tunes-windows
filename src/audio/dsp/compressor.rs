@@ -14,13 +14,11 @@ pub fn get_compressor_enabled_arc() -> &'static Arc<AtomicBool> {
 }
 
 pub fn get_compressor_threshold_arc() -> &'static Arc<AtomicU32> {
-    COMPRESSOR_THRESHOLD
-        .get_or_init(|| Arc::new(AtomicU32::new((-14.0_f32).to_bits())))
+    COMPRESSOR_THRESHOLD.get_or_init(|| Arc::new(AtomicU32::new((-14.0_f32).to_bits())))
 }
 
 pub fn get_compressor_makeup_arc() -> &'static Arc<AtomicU32> {
-    COMPRESSOR_MAKEUP
-        .get_or_init(|| Arc::new(AtomicU32::new(0.0_f32.to_bits())))
+    COMPRESSOR_MAKEUP.get_or_init(|| Arc::new(AtomicU32::new(0.0_f32.to_bits())))
 }
 
 fn bits_to_f32(b: u32) -> f32 {

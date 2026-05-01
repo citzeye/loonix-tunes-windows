@@ -1,7 +1,5 @@
 /* --- loonixtunesv2/src/core/config/presets.rs | presets --- */
 
-
-
 #[derive(Clone)]
 pub struct EqPreset {
     pub name: &'static str,

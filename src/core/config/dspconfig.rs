@@ -10,17 +10,13 @@ pub struct DspConfigManager {
 
 impl Default for DspConfigManager {
     fn default() -> Self {
-        Self {
-            is_dirty: false,
-        }
+        Self { is_dirty: false }
     }
 }
 
 impl DspConfigManager {
     pub fn new() -> Self {
-        Self {
-            is_dirty: false,
-        }
+        Self { is_dirty: false }
     }
 }
 
@@ -77,11 +73,22 @@ impl DspConfigManager {
     pub fn save_dsp_config(&mut self, state: &DspStateView) {
         use crate::audio::config::BuiltInPreset;
         use crate::core::config::presets::EQ_PRESETS;
-        let built_in: Vec<BuiltInPreset> = EQ_PRESETS.iter()
+        let built_in: Vec<BuiltInPreset> = EQ_PRESETS
+            .iter()
             .enumerate()
-            .map(|(i, p)| BuiltInPreset { id: i as i32, name: p.name.to_string() })
+            .map(|(i, p)| BuiltInPreset {
+                id: i as i32,
+                name: p.name.to_string(),
+            })
             .collect();
-        let bis = [built_in[0].clone(), built_in[1].clone(), built_in[2].clone(), built_in[3].clone(), built_in[4].clone(), built_in[5].clone()];
+        let bis = [
+            built_in[0].clone(),
+            built_in[1].clone(),
+            built_in[2].clone(),
+            built_in[3].clone(),
+            built_in[4].clone(),
+            built_in[5].clone(),
+        ];
         let dsp_config = DspConfig {
             version: "2.0".into(),
             dsp_enabled: state.dsp_enabled,
@@ -287,8 +294,3 @@ impl DspStateView {
         }
     }
 }
-
-
-
-
-

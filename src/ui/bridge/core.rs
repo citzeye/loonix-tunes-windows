@@ -1,8 +1,8 @@
 /* --- loonixtunesv2/src/ui/bridge/core.rs | core --- */
-use crate::audio::io::audiooutput::AudioOutput;
 use crate::audio::engine::{FfmpegEngine, MusicItem};
-use crate::core::services::get_file_service;
+use crate::audio::io::audiooutput::AudioOutput;
 use crate::core::library::library::Library;
+use crate::core::services::get_file_service;
 use crate::core::services::PlaybackController;
 use crate::ui::QueueController;
 use dirs;
@@ -57,7 +57,7 @@ pub struct MusicModel {
 
     pub current_folder_qml: qt_property!(QString; NOTIFY current_folder_changed),
     pub current_folder_changed: qt_signal!(),
-    
+
     // Current tab root for clean slate logic
     pub current_tab_root: qt_property!(QString; NOTIFY current_tab_root_changed),
     pub current_tab_root_changed: qt_signal!(),
@@ -125,7 +125,8 @@ pub struct MusicModel {
     pub track_info_file_path: qt_property!(QString; NOTIFY track_info_changed),
     pub track_info_changed: qt_signal!(),
 
-    pub(crate) saved_config: Option<std::sync::Arc<std::sync::Mutex<crate::audio::config::AppConfig>>>,
+    pub(crate) saved_config:
+        Option<std::sync::Arc<std::sync::Mutex<crate::audio::config::AppConfig>>>,
 
     // --- QML Methods ---
     pub scan_music: qt_method!(fn(&mut self)),
@@ -152,7 +153,7 @@ pub struct MusicModel {
     pub save_state: qt_method!(fn(&mut self)),
     pub save_window_position: qt_method!(fn(&mut self, x: i32, y: i32, width: i32, height: i32)),
     pub get_window_config: qt_method!(fn(&self) -> QVariantMap),
-    
+
     // Bridge to Library
     pub add_folder_tab: qt_method!(fn(&mut self, path: String)),
     pub add_song: qt_method!(fn(&mut self, path: String)),
@@ -176,7 +177,8 @@ pub struct MusicModel {
     pub custom_folders_changed: qt_signal!(),
     pub folder_lock_changed: qt_signal!(),
     pub folder_lock_version: qt_property!(i32; NOTIFY folder_lock_changed),
-    pub sync_theme_to_config: qt_method!(fn(&mut self, theme_name: QString, custom_themes_json: QString)),
+    pub sync_theme_to_config:
+        qt_method!(fn(&mut self, theme_name: QString, custom_themes_json: QString)),
 
     // Bridge to Queue
     pub add_to_queue: qt_method!(fn(&mut self, path: String, name: String)),
@@ -258,11 +260,15 @@ impl MusicModel {
         self.playback.is_playing()
     }
 
-    pub fn get_ffmpeg(&self) -> std::sync::Arc<std::sync::Mutex<crate::audio::engine::FfmpegEngine>> {
+    pub fn get_ffmpeg(
+        &self,
+    ) -> std::sync::Arc<std::sync::Mutex<crate::audio::engine::FfmpegEngine>> {
         self.ffmpeg.clone()
     }
 
-    pub fn get_shared_config(&self) -> Option<std::sync::Arc<std::sync::Mutex<crate::audio::config::AppConfig>>> {
+    pub fn get_shared_config(
+        &self,
+    ) -> Option<std::sync::Arc<std::sync::Mutex<crate::audio::config::AppConfig>>> {
         self.saved_config.clone()
     }
 
@@ -285,7 +291,9 @@ impl MusicModel {
         };
 
         model.saved_config = saved_config_arc;
-        model.output.set_normalizer_enabled(saved_config.normalizer_enabled);
+        model
+            .output
+            .set_normalizer_enabled(saved_config.normalizer_enabled);
         model.output.mode = saved_config.mode;
 
         if let Ok(mut ff) = model.ffmpeg.lock() {
@@ -294,9 +302,11 @@ impl MusicModel {
 
         model.playback = PlaybackController::new(model.ffmpeg.clone());
         model.playback.volume = model.volume;
-        
+
         model.library = crate::core::library::Library::new();
-        model.library.load_folders(saved_config.custom_folders.clone());
+        model
+            .library
+            .load_folders(saved_config.custom_folders.clone());
         model.custom_folder_count = model.library.custom_folder_count as i32;
         model.custom_folders_changed();
         model.scan_music();
@@ -316,7 +326,7 @@ impl MusicModel {
         self.current_folder_qml = QString::from("MUSIC");
         self.library.scan_music_folder(&music_dir);
         self.all_items = self.library.all_items.clone();
-        
+
         // Add session folders to the display
         for session_path in &self.session_folders {
             let session_folder_path = Path::new(session_path);
@@ -330,14 +340,15 @@ impl MusicModel {
                 self.all_items.push(session_item);
             }
         }
-        
+
         // Sort combined list
-        self.all_items.sort_by(|a, b| match (a.is_folder, b.is_folder) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-        });
-        
+        self.all_items
+            .sort_by(|a, b| match (a.is_folder, b.is_folder) {
+                (true, false) => std::cmp::Ordering::Less,
+                (false, true) => std::cmp::Ordering::Greater,
+                _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+            });
+
         self.display_list = self.all_items.clone();
         self.begin_reset_model();
         self.end_reset_model();
@@ -346,7 +357,9 @@ impl MusicModel {
 
     pub fn scan_folder(&mut self, path: String) {
         let folder_path = Path::new(&path);
-        if !folder_path.exists() || !folder_path.is_dir() { return; }
+        if !folder_path.exists() || !folder_path.is_dir() {
+            return;
+        }
         self.current_folder_qml = QString::default();
         self.library.scan_custom_directory(folder_path);
         self.all_items = self.library.all_items.clone();
@@ -361,7 +374,7 @@ impl MusicModel {
         self.display_list.clear();
         self.current_tab_root = QString::from(folder_path.clone());
         self.current_tab_root_changed();
-        
+
         self.library.switch_to_folder(&folder_path);
         self.current_folder_qml = QString::from(self.library.current_folder.clone());
         self.all_items = self.library.all_items.clone();
@@ -377,7 +390,7 @@ impl MusicModel {
         let new_index = self.library.custom_folder_count - 1;
         self.custom_folder_count = self.library.custom_folder_count as i32;
         self.custom_folders_changed();
-        
+
         // Auto-lock new folder and save to config
         if let Some(ref config) = &self.saved_config {
             if let Ok(mut cfg) = config.lock() {
@@ -389,7 +402,7 @@ impl MusicModel {
         }
         self.folder_lock_version += 1;
         self.folder_lock_changed();
-        
+
         self.save_custom_folders();
         self.switch_to_folder(clean);
     }
@@ -418,7 +431,7 @@ impl MusicModel {
         }
     }
 
-    pub fn get_custom_folder_count(&self) -> i32 { 
+    pub fn get_custom_folder_count(&self) -> i32 {
         self.library.custom_folder_count as i32
     }
 
@@ -445,25 +458,30 @@ impl MusicModel {
 
     pub fn toggle_folder(&mut self, index: i32) {
         let idx = index as usize;
-        if idx >= self.display_list.len() { return; }
-        
+        if idx >= self.display_list.len() {
+            return;
+        }
+
         // 1. Ambil item secara utuh
         let item = self.display_list[idx].clone();
-        if !item.is_folder { return; }
-        
+        if !item.is_folder {
+            return;
+        }
+
         // 2. Gunakan PATH asli sebagai ID unik, bukan nama.
         let folder_path = item.path.clone();
 
         if self.expanded_folders.contains(&folder_path) {
             // COLLAPSE LOGIC
             self.expanded_folders.remove(&folder_path);
-            self.display_list.retain(|i| i.parent_folder.as_ref() != Some(&folder_path));
+            self.display_list
+                .retain(|i| i.parent_folder.as_ref() != Some(&folder_path));
         } else {
             // EXPAND LOGIC
             self.expanded_folders.insert(folder_path.clone());
             self.library.get_folder_contents(&folder_path);
             let contents = self.library.display_list.clone();
-            
+
             if let Some(pos) = self.display_list.iter().position(|i| i.path == folder_path) {
                 for (offset, mut sub_item) in contents.into_iter().enumerate() {
                     sub_item.parent_folder = Some(folder_path.clone());
@@ -509,7 +527,7 @@ impl MusicModel {
         self.display_list.clear();
         self.current_tab_root = QString::from("FAVORITES");
         self.current_tab_root_changed();
-        
+
         self.library.switch_to_favorites();
         self.current_folder_qml = QString::from("FAVORITES");
         self.all_items = self.library.all_items.clone();
@@ -524,7 +542,7 @@ impl MusicModel {
         self.display_list.clear();
         self.current_tab_root = QString::from("MUSIC");
         self.current_tab_root_changed();
-        
+
         let home = match dirs::home_dir() {
             Some(path) => path,
             None => return,
@@ -578,7 +596,7 @@ impl MusicModel {
         self.display_list.clear();
         self.current_tab_root = QString::from("QUEUE");
         self.current_tab_root_changed();
-        
+
         self.current_folder_qml = QString::from("QUEUE");
         self.all_items = self.queue.get_all();
         self.display_list = self.all_items.clone();
@@ -591,14 +609,18 @@ impl MusicModel {
     // PLAYBACK CONTROLLER BRIDGES
     // ==========================================
     pub fn play_at(&mut self, index: i32) {
-        if index < 0 || index as usize >= self.display_list.len() { return; }
+        if index < 0 || index as usize >= self.display_list.len() {
+            return;
+        }
         let item = &self.display_list[index as usize];
-        if item.is_folder { return; }
+        if item.is_folder {
+            return;
+        }
 
         self.playback_playlist = self.display_list.clone();
         self.playback_index = index;
         self.current_index = index;
-        
+
         self.playback.play_at(item);
         self.position = self.playback.position;
         self.duration = self.playback.duration;
@@ -634,7 +656,10 @@ impl MusicModel {
             }
         }
 
-        if let Some((next_idx, next_item)) = self.playback.play_next(&self.playback_playlist, self.playback_index) {
+        if let Some((next_idx, next_item)) = self
+            .playback
+            .play_next(&self.playback_playlist, self.playback_index)
+        {
             self.playback_index = next_idx as i32;
             self.current_index = self.playback_index;
             self.current_title = QString::from(next_item.name.clone());
@@ -655,7 +680,10 @@ impl MusicModel {
     }
 
     pub fn play_prev(&mut self) {
-        if let Some((prev_idx, prev_item)) = self.playback.play_prev(&self.playback_playlist, self.playback_index) {
+        if let Some((prev_idx, prev_item)) = self
+            .playback
+            .play_prev(&self.playback_playlist, self.playback_index)
+        {
             self.playback_index = prev_idx as i32;
             self.current_index = self.playback_index;
             self.current_title = QString::from(prev_item.name.clone());
@@ -673,10 +701,13 @@ impl MusicModel {
         }
     }
 
-    pub fn play_previous(&mut self) { self.play_prev(); }
+    pub fn play_previous(&mut self) {
+        self.play_prev();
+    }
 
     pub fn toggle_shuffle(&mut self) {
-        self.playback.toggle_shuffle(&self.display_list, self.current_index);
+        self.playback
+            .toggle_shuffle(&self.display_list, self.current_index);
         // Langsung tembak ke property QML (self.shuffle) ngambil dari playback
         self.shuffle = self.playback.shuffle_active;
         self.shuffle_changed();
@@ -713,7 +744,9 @@ impl MusicModel {
 
     pub fn seek_to(&mut self, pos: i32) {
         self.position = pos;
-        if let Ok(mut ff) = self.ffmpeg.lock() { ff.seek(pos as f64 / 1000.0); }
+        if let Ok(mut ff) = self.ffmpeg.lock() {
+            ff.seek(pos as f64 / 1000.0);
+        }
         self.position_changed();
     }
 
@@ -721,8 +754,11 @@ impl MusicModel {
         let s = (ms / 1000) % 60;
         let m = (ms / 60000) % 60;
         let h = ms / 3600000;
-        if h > 0 { format!("{}:{:02}:{:02}", h, m, s).into() }
-        else { format!("{:02}:{:02}", m, s).into() }
+        if h > 0 {
+            format!("{}:{:02}:{:02}", h, m, s).into()
+        } else {
+            format!("{:02}:{:02}", m, s).into()
+        }
     }
 
     pub fn set_volume(&mut self, vol: f64) {
@@ -733,7 +769,9 @@ impl MusicModel {
 
     pub fn set_balance(&mut self, balance: f64) {
         self.balance = balance;
-        if let Ok(mut ff) = self.ffmpeg.lock() { ff.set_balance(balance as f32); }
+        if let Ok(mut ff) = self.ffmpeg.lock() {
+            ff.set_balance(balance as f32);
+        }
         self.balance_changed();
     }
 
@@ -751,13 +789,25 @@ impl MusicModel {
         let should_next = if let Ok(mut ff) = self.ffmpeg.lock() {
             ff.update_tick();
             let pos = (ff.get_position() * 1000.0) as i32;
-            if pos != self.position { self.position = pos; self.position_changed(); }
+            if pos != self.position {
+                self.position = pos;
+                self.position_changed();
+            }
             let dur = (ff.get_duration() * 1000.0) as i32;
-            if dur != self.duration { self.duration = dur; self.duration_changed(); }
+            if dur != self.duration {
+                self.duration = dur;
+                self.duration_changed();
+            }
             ff.take_finished()
-        } else { false };
-        if should_next { self.play_next(); }
-        if self.tick_counter % 100 == 0 { self.save_state(); }
+        } else {
+            false
+        };
+        if should_next {
+            self.play_next();
+        }
+        if self.tick_counter % 100 == 0 {
+            self.save_state();
+        }
         // Sync ABLoop state every tick to ensure UI is always updated
         self.sync_abloop();
     }
@@ -773,12 +823,14 @@ impl MusicModel {
         } else {
             None
         };
-        
+
         if let Some(path) = last_path {
             if let Some(pos) = self.display_list.iter().position(|i| i.path == path) {
                 self.current_index = pos as i32;
                 self.current_title = QString::from(self.display_list[pos].name.clone());
-                if let Ok(mut ff) = self.ffmpeg.lock() { ff.load(&path); }
+                if let Ok(mut ff) = self.ffmpeg.lock() {
+                    ff.load(&path);
+                }
                 self.current_index_changed();
                 self.title_changed();
                 // Sync ABLoop state after track change (reset in load())
@@ -792,8 +844,11 @@ impl MusicModel {
             if let Ok(mut cfg) = config.lock() {
                 cfg.volume = self.volume;
                 cfg.balance = self.balance;
-                if self.current_index >= 0 && (self.current_index as usize) < self.display_list.len() {
-                    cfg.last_track_path = self.display_list[self.current_index as usize].path.clone();
+                if self.current_index >= 0
+                    && (self.current_index as usize) < self.display_list.len()
+                {
+                    cfg.last_track_path =
+                        self.display_list[self.current_index as usize].path.clone();
                 }
                 let _ = cfg.save();
             }
@@ -803,8 +858,10 @@ impl MusicModel {
     pub fn save_window_position(&mut self, x: i32, y: i32, width: i32, height: i32) {
         if let Some(ref config) = &self.saved_config {
             if let Ok(mut cfg) = config.lock() {
-                cfg.window_x = x; cfg.window_y = y;
-                cfg.window_width = width; cfg.window_height = height;
+                cfg.window_x = x;
+                cfg.window_y = y;
+                cfg.window_width = width;
+                cfg.window_height = height;
                 let _ = cfg.save();
             }
         }
@@ -869,11 +926,12 @@ impl MusicModel {
                 is_folder: false,
                 parent_folder: None,
             });
-            self.all_items.sort_by(|a, b| match (a.is_folder, b.is_folder) {
-                (true, false) => std::cmp::Ordering::Less,
-                (false, true) => std::cmp::Ordering::Greater,
-                _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-            });
+            self.all_items
+                .sort_by(|a, b| match (a.is_folder, b.is_folder) {
+                    (true, false) => std::cmp::Ordering::Less,
+                    (false, true) => std::cmp::Ordering::Greater,
+                    _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+                });
             self.display_list = self.all_items.clone();
             self.begin_reset_model();
             self.end_reset_model();
@@ -882,12 +940,16 @@ impl MusicModel {
 
     pub fn remove_song(&mut self, index: i32) {
         let idx = index as usize;
-        if idx >= self.display_list.len() { return; }
+        if idx >= self.display_list.len() {
+            return;
+        }
         let item = self.display_list[idx].clone();
         if item.is_folder {
             let name = item.name.clone();
-            self.display_list.retain(|i| i.parent_folder.as_ref() != Some(&name) && i.name != name);
-            self.all_items.retain(|i| i.parent_folder.as_ref() != Some(&name) && i.name != name);
+            self.display_list
+                .retain(|i| i.parent_folder.as_ref() != Some(&name) && i.name != name);
+            self.all_items
+                .retain(|i| i.parent_folder.as_ref() != Some(&name) && i.name != name);
             self.expanded_folders.remove(&name);
         } else {
             self.all_items.retain(|i| i.path != item.path);
@@ -906,12 +968,12 @@ impl MusicModel {
 
     pub fn add_temporary_folder(&mut self, path: String) {
         let clean = clean_qml_path(&path);
-        
+
         // Add to session folders if not already exists
         if !self.session_folders.contains(&clean) {
             self.session_folders.push(clean.clone());
         }
-        
+
         let folder_path = Path::new(&clean);
         if let Some(name) = folder_path.file_name() {
             self.all_items.push(MusicItem {
@@ -920,11 +982,12 @@ impl MusicModel {
                 is_folder: true,
                 parent_folder: None,
             });
-            self.all_items.sort_by(|a, b| match (a.is_folder, b.is_folder) {
-                (true, false) => std::cmp::Ordering::Less,
-                (false, true) => std::cmp::Ordering::Greater,
-                _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-            });
+            self.all_items
+                .sort_by(|a, b| match (a.is_folder, b.is_folder) {
+                    (true, false) => std::cmp::Ordering::Less,
+                    (false, true) => std::cmp::Ordering::Greater,
+                    _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+                });
             self.display_list = self.all_items.clone();
             self.begin_reset_model();
             self.end_reset_model();
@@ -933,30 +996,31 @@ impl MusicModel {
 
     pub fn add_folder_to_list(&mut self, path: String) {
         let clean = clean_qml_path(&path);
-        
+
         // Add to session folders if not already exists
         if !self.session_folders.contains(&clean) {
             self.session_folders.push(clean.clone());
         }
-        
+
         let folder_path = Path::new(&clean);
         if let Some(name) = folder_path.file_name() {
             // Check if already exists in all_items
             if self.all_items.iter().any(|i| i.path == clean) {
                 return;
             }
-            
+
             self.all_items.push(MusicItem {
                 name: name.to_string_lossy().to_string(),
                 path: clean,
                 is_folder: true,
                 parent_folder: None,
             });
-            self.all_items.sort_by(|a, b| match (a.is_folder, b.is_folder) {
-                (true, false) => std::cmp::Ordering::Less,
-                (false, true) => std::cmp::Ordering::Greater,
-                _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-            });
+            self.all_items
+                .sort_by(|a, b| match (a.is_folder, b.is_folder) {
+                    (true, false) => std::cmp::Ordering::Less,
+                    (false, true) => std::cmp::Ordering::Greater,
+                    _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+                });
             self.display_list = self.all_items.clone();
             self.begin_reset_model();
             self.end_reset_model();
@@ -975,7 +1039,7 @@ impl MusicModel {
         self.display_list.clear();
         self.current_tab_root = QString::from("EXTERNAL_FILES");
         self.current_tab_root_changed();
-        
+
         self.library.switch_to_external();
         self.current_folder_qml = QString::from("EXTERNAL_FILES");
         self.all_items = self.library.all_items.clone();
@@ -994,7 +1058,9 @@ impl MusicModel {
 
     pub fn process_command_line_files(&mut self) {
         let files = get_command_line_files();
-        for file in files { self.add_external_file(file.clone()); }
+        for file in files {
+            self.add_external_file(file.clone());
+        }
     }
 
     pub fn save_custom_folders(&mut self) {
@@ -1008,7 +1074,9 @@ impl MusicModel {
 
     pub fn is_folder_locked(&self, index: i32) -> bool {
         if let Some(ref config) = &self.saved_config {
-            if let Ok(cfg) = config.lock() { return cfg.locked_folders.contains(&index); }
+            if let Ok(cfg) = config.lock() {
+                return cfg.locked_folders.contains(&index);
+            }
         }
         false
     }
@@ -1017,8 +1085,11 @@ impl MusicModel {
         if index >= 0 && (index as usize) < self.library.custom_folders.len() {
             if let Some(ref config) = &self.saved_config {
                 if let Ok(mut cfg) = config.lock() {
-                    if cfg.locked_folders.contains(&index) { cfg.locked_folders.retain(|&i| i != index); }
-                    else { cfg.locked_folders.push(index); }
+                    if cfg.locked_folders.contains(&index) {
+                        cfg.locked_folders.retain(|&i| i != index);
+                    } else {
+                        cfg.locked_folders.push(index);
+                    }
                     let _ = cfg.save();
                 }
             }
@@ -1035,7 +1106,9 @@ impl MusicModel {
     pub fn check_for_updates(&mut self) {}
     pub fn poll_update_result(&mut self) {}
     pub fn select_device(&mut self, _device_name: String) {}
-    pub fn get_output_devices(&self) -> QVariantList { QVariantList::default() }
+    pub fn get_output_devices(&self) -> QVariantList {
+        QVariantList::default()
+    }
     pub fn set_output_device(&mut self, _index: i32) {}
     pub fn sync_theme_to_config(&mut self, _theme_name: QString, _custom_themes_json: QString) {}
 }

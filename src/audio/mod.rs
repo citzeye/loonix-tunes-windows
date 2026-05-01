@@ -18,4 +18,6 @@ pub use self::io::audiooutput::AudioOutput;
 pub use self::io::buffer::ringbuffer::RingBuffer;
 pub use self::io::decoder::DecoderControl;
 pub use self::io::resample::StereoResampler;
-pub use crate::audio::engine::{is_audio_file, AudioState, Engine, FfmpegEngine, MusicItem, OutputMode};
+pub use crate::audio::engine::{
+    is_audio_file, AudioState, Engine, FfmpegEngine, MusicItem, OutputMode,
+};

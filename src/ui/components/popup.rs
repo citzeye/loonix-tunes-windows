@@ -141,4 +141,3 @@ impl PopupMenu {
         self.menu_items_changed();
     }
 }
-

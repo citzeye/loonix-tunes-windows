@@ -47,7 +47,11 @@ impl FavoritesManager {
     }
 
     pub fn contains(&self, path: &str) -> bool {
-        self.favorites.lock().unwrap().iter().any(|item| item.path == path)
+        self.favorites
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|item| item.path == path)
     }
 
     pub fn get_all(&self) -> Vec<FavoriteItem> {

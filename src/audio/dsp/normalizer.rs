@@ -15,7 +15,7 @@ pub fn get_enabled_arc() -> Arc<AtomicBool> {
 
 fn get_smoothing_arc() -> Arc<AtomicU32> {
     NORMALIZER_SMOOTHING
-        .get_or_init(|| Arc::new(AtomicU32::new(0.002_f32.to_bits())))
+        .get_or_init(|| Arc::new(AtomicU32::new(0.0015_f32.to_bits())))
         .clone()
 }
 
@@ -29,11 +29,6 @@ fn get_smoothing_value() -> f32 {
     f32::from_bits(get_smoothing_arc().load(Ordering::Relaxed))
 }
 
-fn get_gain_value() -> f32 {
-    f32::from_bits(get_normalizer_gain_arc().load(Ordering::Relaxed))
-}
-
-/// Get the shared smoothing atomic for lock-free updates from UI.
 pub fn get_normalizer_smoothing_arc() -> Arc<AtomicU32> {
     get_smoothing_arc()
 }
@@ -65,6 +60,9 @@ impl SmoothingPreset {
     }
 }
 
+/// Track-level gain applicator.
+/// Applies precomputed RMS gain from scanner.
+/// Not a compressor. Not a limiter.
 pub struct AudioNormalizer {
     fixed_gain: f32,
     current_gain: f32,
@@ -74,7 +72,7 @@ unsafe impl Send for AudioNormalizer {}
 unsafe impl Sync for AudioNormalizer {}
 
 impl AudioNormalizer {
-    pub fn new(enabled: bool, _target_lufs: f32) -> Self {
+    pub fn new(enabled: bool) -> Self {
         get_enabled_arc().store(enabled, Ordering::SeqCst);
         Self {
             fixed_gain: 1.0,
@@ -107,18 +105,22 @@ impl DspProcessor for AudioNormalizer {
             output.copy_from_slice(input);
             return;
         }
+
         let smoothing = get_smoothing_value();
-        let target_gain = get_gain_value().clamp(0.01, 3.98);
-        self.fixed_gain = target_gain;
         let target = self.fixed_gain;
+
         for i in 0..input.len() {
+            // Simple smoothing towards fixed gain (no transient detection)
             self.current_gain += (target - self.current_gain) * smoothing;
-            output[i] = soft_clip(input[i] * self.current_gain);
+
+            // Apply gain first, then surgical clip
+            let amplified = input[i] * self.current_gain;
+            output[i] = soft_clip(amplified);
         }
     }
 
     fn reset(&mut self) {
-        self.current_gain = self.fixed_gain;
+        self.current_gain = 1.0;
     }
 
     fn as_any(&mut self) -> &mut dyn std::any::Any {
@@ -130,7 +132,19 @@ impl DspProcessor for AudioNormalizer {
     }
 }
 
+/// Safety clipper to prevent overshoot after normalization.
+// Should rarely engage if scanner peak constraint works correctly.
 #[inline(always)]
 fn soft_clip(sample: f32) -> f32 {
-    (0.99 * sample.tanh()).clamp(-0.99, 0.99)
+    let threshold = 0.95;
+    let abs_s = sample.abs();
+    if abs_s <= threshold {
+        sample // Bit-perfect transparency for transients
+    } else {
+        // Cubic clipping (more transparent than tanh for drums)
+        let sign = sample.signum();
+        let normalized = (abs_s - threshold) / (1.0 - threshold);
+        let clipped = threshold + (1.0 - threshold) * (normalized - (normalized.powi(3) / 3.0));
+        sign * clipped.clamp(0.0, 0.99)
+    }
 }

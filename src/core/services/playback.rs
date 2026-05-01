@@ -158,18 +158,18 @@ impl PlaybackController {
 
     pub fn toggle_shuffle(&mut self, display_list: &[MusicItem], current_idx: i32) {
         self.shuffle_active = !self.shuffle_active;
-        
+
         if self.shuffle_active && !display_list.is_empty() {
             let total = display_list.len();
             let mut indices: Vec<i32> = (0..total as i32).collect();
-            
+
             // Fisher-Yates with better seed (LCG)
             use std::time::{SystemTime, UNIX_EPOCH};
             let mut seed = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_nanos() as usize;
-            
+
             for i in (1..total).rev() {
                 seed = seed.wrapping_mul(1103515245).wrapping_add(12345);
                 let j = (seed % (i + 1)) as usize;
@@ -183,7 +183,7 @@ impl PlaybackController {
                     indices.insert(0, current_idx);
                 }
             }
-            
+
             self.shuffle_queue = indices;
             self.queue_index = 0;
         }

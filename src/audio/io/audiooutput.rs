@@ -91,9 +91,11 @@ pub struct AudioOutput {
     flush_requested: Arc<AtomicBool>,
     resume_frame_counter: Arc<AtomicU32>,
     consumer: Arc<Mutex<Option<HeapCons<f32>>>>,
-    normalizer_enabled: Arc<AtomicBool>,
-    normalizer: Arc<Mutex<crate::audio::dsp::normalizer::AudioNormalizer>>,
-    selected_device_index: Arc<Mutex<Option<usize>>>,
+        normalizer_enabled: Arc<AtomicBool>,
+        normalizer: Arc<Mutex<crate::audio::dsp::normalizer::AudioNormalizer>>,
+        limiter_enabled: Arc<AtomicBool>,
+        limiter: Arc<Mutex<crate::audio::dsp::limiter::Limiter>>,
+        selected_device_index: Arc<Mutex<Option<usize>>>,
     is_bluetooth_detected: Arc<AtomicBool>,
     pub reconnecting: Arc<AtomicBool>,
     pub reconnect_attempts: Arc<AtomicU32>,
@@ -113,9 +115,11 @@ pub struct AudioOutput {
     stream_mode: Arc<Mutex<OutputMode>>,
     stream_dsp_chain: Arc<Mutex<DspChain>>,
     stream_dsp_enabled: Arc<AtomicBool>,
-    stream_normalizer_enabled: Arc<AtomicBool>,
-    stream_normalizer: Arc<Mutex<crate::audio::dsp::normalizer::AudioNormalizer>>,
-    stream_samples_played: Arc<AtomicU64>,
+            stream_normalizer_enabled: Arc<AtomicBool>,
+            stream_normalizer: Arc<Mutex<crate::audio::dsp::normalizer::AudioNormalizer>>,
+            stream_limiter_enabled: Arc<AtomicBool>,
+            stream_limiter: Arc<Mutex<crate::audio::dsp::limiter::Limiter>>,
+            stream_samples_played: Arc<AtomicU64>,
     stream_empty_count: Arc<AtomicU32>,
     stream_output_state: Arc<AtomicU32>,
     stream_decoder_eof: Arc<AtomicBool>,
@@ -156,9 +160,13 @@ impl AudioOutput {
             resume_frame_counter: Arc::new(AtomicU32::new(0)),
             consumer: Arc::new(Mutex::new(None)),
             normalizer_enabled: Arc::new(AtomicBool::new(false)),
-            normalizer: Arc::new(Mutex::new(
-                crate::audio::dsp::normalizer::AudioNormalizer::new(true, -14.0),
-            )),
+             normalizer: Arc::new(Mutex::new(
+                 crate::audio::dsp::normalizer::AudioNormalizer::new(true),
+             )),
+             limiter_enabled: Arc::new(AtomicBool::new(true)),
+             limiter: Arc::new(Mutex::new(
+                 crate::audio::dsp::limiter::Limiter::new(),
+             )),
             selected_device_index: Arc::new(Mutex::new(None)),
             is_bluetooth_detected: Arc::new(AtomicBool::new(false)),
             reconnecting: Arc::new(AtomicBool::new(false)),
@@ -180,9 +188,13 @@ impl AudioOutput {
             stream_dsp_chain: Arc::new(Mutex::new(DspChain::default())),
             stream_dsp_enabled: Arc::new(AtomicBool::new(true)),
             stream_normalizer_enabled: Arc::new(AtomicBool::new(false)),
-            stream_normalizer: Arc::new(Mutex::new(
-                crate::audio::dsp::normalizer::AudioNormalizer::new(true, -14.0),
-            )),
+             stream_normalizer: Arc::new(Mutex::new(
+                 crate::audio::dsp::normalizer::AudioNormalizer::new(true),
+             )),
+             stream_limiter_enabled: Arc::new(AtomicBool::new(true)),
+             stream_limiter: Arc::new(Mutex::new(
+                 crate::audio::dsp::limiter::Limiter::new(),
+             )),
             stream_samples_played: Arc::new(AtomicU64::new(0)),
             stream_empty_count: Arc::new(AtomicU32::new(0)),
             stream_output_state: Arc::new(AtomicU32::new(OUTPUT_STATE_PRIMING)),
@@ -301,13 +313,17 @@ impl AudioOutput {
     }
 
     pub fn set_volume(&self, volume: f32) {
-        self.volume_bits.store(f32_to_bits(volume), Ordering::SeqCst);
-        self.stream_volume.store(f32_to_bits(volume), Ordering::SeqCst);
+        self.volume_bits
+            .store(f32_to_bits(volume), Ordering::SeqCst);
+        self.stream_volume
+            .store(f32_to_bits(volume), Ordering::SeqCst);
     }
 
     pub fn set_balance(&self, balance: f32) {
-        self.balance_bits.store(f32_to_bits(balance), Ordering::SeqCst);
-        self.stream_balance.store(f32_to_bits(balance), Ordering::SeqCst);
+        self.balance_bits
+            .store(f32_to_bits(balance), Ordering::SeqCst);
+        self.stream_balance
+            .store(f32_to_bits(balance), Ordering::SeqCst);
     }
 
     pub fn set_dsp_enabled(&self, enabled: bool) {
@@ -321,7 +337,8 @@ impl AudioOutput {
 
     pub fn set_normalizer_enabled(&mut self, enabled: bool) {
         self.normalizer_enabled.store(enabled, Ordering::SeqCst);
-        self.stream_normalizer_enabled.store(enabled, Ordering::SeqCst);
+        self.stream_normalizer_enabled
+            .store(enabled, Ordering::SeqCst);
     }
 
     pub fn set_normalizer_gain(&self, gain: f32) {
@@ -369,7 +386,8 @@ impl AudioOutput {
 
     pub fn select_device(&mut self, device_name: String) {
         let is_bluetooth = device_name.to_lowercase().contains("bluetooth");
-        self.is_bluetooth_detected.store(is_bluetooth, Ordering::SeqCst);
+        self.is_bluetooth_detected
+            .store(is_bluetooth, Ordering::SeqCst);
 
         if let Ok(mut selected) = self.selected_device_index.lock() {
             *selected = Some(device_name.parse().unwrap_or(0));
@@ -410,9 +428,9 @@ impl AudioOutput {
 
     fn enumerate_devices() -> Vec<AudioDevice> {
         let mut devices = Vec::new();
-        
+
         let host = cpal::default_host();
-        
+
         if let Ok(device_list) = host.output_devices() {
             for (idx, device) in device_list.enumerate() {
                 let name = device.name().unwrap_or_else(|_| "Unknown".to_string());
@@ -423,7 +441,7 @@ impl AudioOutput {
                 });
             }
         }
-        
+
         devices
     }
 
@@ -454,6 +472,8 @@ impl AudioOutput {
         self.stream_dsp_enabled = self.dsp_enabled.clone();
         self.stream_normalizer_enabled = self.normalizer_enabled.clone();
         self.stream_normalizer = self.normalizer.clone();
+        self.stream_limiter_enabled = self.limiter_enabled.clone();
+        self.stream_limiter = self.limiter.clone();
         self.stream_samples_played = self.samples_played.clone();
         self.stream_empty_count = self.empty_callback_count.clone();
         self.stream_output_state = self.output_state.clone();
@@ -472,7 +492,8 @@ impl AudioOutput {
             Ok(stream) => {
                 self.should_stop.store(false, Ordering::SeqCst);
                 self.is_running.store(true, Ordering::SeqCst);
-                self.output_state.store(OUTPUT_STATE_PRIMING, Ordering::SeqCst);
+                self.output_state
+                    .store(OUTPUT_STATE_PRIMING, Ordering::SeqCst);
                 self.decoder_eof.store(false, Ordering::SeqCst);
                 self.empty_callback_count.store(0, Ordering::Relaxed);
 
@@ -492,24 +513,31 @@ impl AudioOutput {
 
     fn create_cpal_stream(&self, sample_rate: u32) -> Result<cpal::Stream, String> {
         let host = cpal::default_host();
-        
-        let device = host.default_output_device()
+
+        let device = host
+            .default_output_device()
             .ok_or_else(|| "No default output device".to_string())?;
 
-        let config = device
+        // Query supported config to branch on sample format without forcing a rate
+        // Use device-provided config to avoid resampling artefacts
+        let supported_config = device
             .default_output_config()
             .map_err(|e| format!("Failed to get default output config: {}", e))?;
-
-        let channels = config.channels() as usize;
-        let sample_rate = cpal::SampleRate(sample_rate);
-
-        let config = cpal::StreamConfig {
-            channels: config.channels(),
-            sample_rate,
-            buffer_size: cpal::BufferSize::Default,
+        // Debug: print device sample format as reported by CPAL/WASAPI/etc.
+        let sample_format = {
+            let fmt = supported_config.sample_format();
+            println!("{:?}", fmt);
+            fmt
         };
+        // Capture the device's actual rate for possible use by the decoder
+        let device_rate = supported_config.sample_rate().0;
+        // Expose device_rate to downstream components (decoder) if needed.
+        let _device_rate_for_decoder = device_rate;
+        let config: cpal::StreamConfig = supported_config.into();
 
-        // Clone all the Arc values needed for the callback
+        let channels = config.channels as usize;
+
+        // Capture shared state for callback
         let consumer = self.stream_consumer.clone();
         let should_stop = self.stream_should_stop.clone();
         let seek_mode = self.stream_seek_mode.clone();
@@ -523,148 +551,326 @@ impl AudioOutput {
         let dsp_enabled = self.stream_dsp_enabled.clone();
         let normalizer_enabled = self.stream_normalizer_enabled.clone();
         let normalizer = self.stream_normalizer.clone();
+        let limiter_enabled = self.stream_limiter_enabled.clone();
+        let limiter = self.stream_limiter.clone();
         let samples_played = self.stream_samples_played.clone();
         let empty_count = self.stream_empty_count.clone();
         let output_state = self.stream_output_state.clone();
         let decoder_eof = self.stream_decoder_eof.clone();
         let bt_detected = self.stream_bt_detected.clone();
 
-        let stream = device
-            .build_output_stream(
-                &config,
-                move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                    let samples_per_write = data.len();
-                    let channels = 2;
-                    let frames = samples_per_write / channels;
+        match sample_format {
+            cpal::SampleFormat::F32 => {
+                let stream = device
+                    .build_output_stream(
+                        &config,
+                        move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
+                            let samples_per_write = data.len();
+                            let channels = config.channels as usize;
+                            let frames = samples_per_write / channels;
 
-                    // Get consumer
-                    let mut read_buffer = vec![0.0f32; samples_per_write];
-                    let mut processed_buffer = vec![0.0f32; samples_per_write];
-                    let mut norm_input = vec![0.0f32; samples_per_write];
-                    let mut norm_output = vec![0.0f32; samples_per_write];
+                            // Get consumer
+                            let mut read_buffer = vec![0.0f32; samples_per_write];
+                            let mut processed_buffer = vec![0.0f32; samples_per_write];
+                            let mut norm_input = vec![0.0f32; samples_per_write];
 
-                    let is_stopped = should_stop.load(Ordering::SeqCst);
-                    if is_stopped {
-                        data.fill(0.0);
-                        return;
-                    }
+                            let is_stopped = should_stop.load(Ordering::SeqCst);
+                            if is_stopped {
+                                data.fill(0.0);
+                                return;
+                            }
 
-                    let is_seeking = seek_mode.load(Ordering::SeqCst);
-                    let is_paused = paused.load(Ordering::SeqCst);
-                    let do_flush = flush.load(Ordering::SeqCst);
+                            let is_seeking = seek_mode.load(Ordering::SeqCst);
+                            let is_paused = paused.load(Ordering::SeqCst);
+                            let do_flush = flush.load(Ordering::SeqCst);
 
-                    if do_flush {
-                        if let Ok(mut c) = consumer.lock() {
-                            if let Some(ref mut cons) = *c {
-                                loop {
-                                    let drained = cons.pop_slice(&mut read_buffer);
-                                    if drained == 0 {
-                                        break;
+                            if do_flush {
+                                if let Ok(mut c) = consumer.lock() {
+                                    if let Some(ref mut cons) = *c {
+                                        loop {
+                                            let drained = cons.pop_slice(&mut read_buffer);
+                                            if drained == 0 {
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                                flush.store(false, Ordering::SeqCst);
+                                empty_count.store(0, Ordering::SeqCst);
+                            }
+
+                            if is_seeking || is_paused {
+                                read_buffer.fill(0.0);
+                            } else {
+                                if let Ok(mut c) = consumer.lock() {
+                                    if let Some(ref mut cons) = *c {
+                                        let samples_read = cons.pop_slice(&mut read_buffer);
+                                        if samples_read == 0 {
+                                            empty_count.fetch_add(1, Ordering::Relaxed);
+                                        } else {
+                                            empty_count.store(0, Ordering::Relaxed);
+                                        }
                                     }
                                 }
                             }
-                        }
-                        flush.store(false, Ordering::SeqCst);
-                        empty_count.store(0, Ordering::SeqCst);
-                    }
 
-                    if is_seeking || is_paused {
-                        read_buffer.fill(0.0);
-                    } else {
-                        if let Ok(mut c) = consumer.lock() {
-                            if let Some(ref mut cons) = *c {
-                                let samples_read = cons.pop_slice(&mut read_buffer);
-                                
-                                if samples_read == 0 {
-                                    empty_count.fetch_add(1, Ordering::Relaxed);
-                                } else {
-                                    empty_count.store(0, Ordering::Relaxed);
+                            // DSP processing
+                            let state = output_state.load(Ordering::SeqCst);
+
+                            if state == OUTPUT_STATE_PRIMING && read_buffer.iter().any(|&x| x != 0.0) {
+                                output_state.store(OUTPUT_STATE_RUNNING, Ordering::SeqCst);
+                            }
+
+                            // ---- NORMALIZER (Engine Core - Always runs first) ----
+                            if normalizer_enabled.load(Ordering::SeqCst) {
+                                if let Ok(mut norm) = normalizer.try_lock() {
+                                    norm.process(&read_buffer[..samples_per_write], &mut processed_buffer[..samples_per_write]);
+                                }
+                            } else {
+                                processed_buffer[..samples_per_write].copy_from_slice(&read_buffer[..samples_per_write]);
+                            }
+
+                            // ---- DSP RACK (Toggleable) ----
+                            if dsp_enabled.load(Ordering::SeqCst) {
+                                if let Ok(chain) = dsp_chain.lock() {
+                                    // Use temp buffer to avoid borrow conflict
+                                    norm_input[..samples_per_write]
+                                        .copy_from_slice(&processed_buffer[..samples_per_write]);
+                                    chain.process(&norm_input[..samples_per_write], &mut processed_buffer[..samples_per_write]);
                                 }
                             }
-                        }
-                    }
 
-                    // Process audio
-                    let state = output_state.load(Ordering::SeqCst);
-                    let is_eof = decoder_eof.load(Ordering::SeqCst);
-
-                    if state == OUTPUT_STATE_PRIMING && read_buffer.iter().any(|&x| x != 0.0) {
-                        output_state.store(OUTPUT_STATE_RUNNING, Ordering::SeqCst);
-                    }
-
-                    // DSP processing
-                    if dsp_enabled.load(Ordering::SeqCst) {
-                        if let Ok(chain) = dsp_chain.lock() {
-                            chain.process(&read_buffer, &mut processed_buffer);
-                        }
-                    } else {
-                        processed_buffer.copy_from_slice(&read_buffer);
-                    }
-
-                    // Normalizer
-                    if normalizer_enabled.load(Ordering::SeqCst) {
-                        if let Ok(mut norm) = normalizer.try_lock() {
-                            norm_input[..samples_per_write].copy_from_slice(&processed_buffer[..samples_per_write]);
-                            norm.process(&norm_input[..samples_per_write], &mut norm_output[..samples_per_write]);
-                            processed_buffer[..samples_per_write].copy_from_slice(&norm_output[..samples_per_write]);
-                        }
-                    }
-
-                    // Volume and balance
-                    let vol = f32::from_bits(volume.load(Ordering::Relaxed));
-                    let bal = f32::from_bits(balance.load(Ordering::Relaxed));
-                    let left_gain = if bal > 0.0 { 1.0 - bal } else { 1.0 };
-                    let right_gain = if bal < 0.0 { 1.0 + bal } else { 1.0 };
-
-                    let current_mode = *mode.lock().unwrap_or_else(|e| e.into_inner());
-
-                    for frame in 0..frames {
-                        let mut left = processed_buffer[frame * 2];
-                        let mut right = processed_buffer[frame * 2 + 1];
-
-                        left *= left_gain;
-                        right *= right_gain;
-
-                        match current_mode {
-                            OutputMode::Mono => {
-                                let mono = (left + right) * 0.5;
-                                left = mono;
-                                right = mono;
+                            // ---- LIMITER (Engine Core - Always runs after DSP) ----
+                            if limiter_enabled.load(Ordering::SeqCst) {
+                                if let Ok(mut limiter) = limiter.try_lock() {
+                                    // Use temp buffer to avoid borrow conflict
+                                    norm_input[..samples_per_write]
+                                        .copy_from_slice(&processed_buffer[..samples_per_write]);
+                                    limiter.process(&norm_input[..samples_per_write], &mut processed_buffer[..samples_per_write]);
+                                }
                             }
-                            OutputMode::Surround => {
-                                let diff = (left - right) * 0.3;
-                                left += diff;
-                                right -= diff;
+
+                            // Volume and balance
+                            let vol = f32::from_bits(volume.load(Ordering::Relaxed));
+                            let bal = f32::from_bits(balance.load(Ordering::Relaxed));
+                            let left_gain = if bal > 0.0 { 1.0 - bal } else { 1.0 };
+                            let right_gain = if bal < 0.0 { 1.0 + bal } else { 1.0 };
+
+                            let current_mode = *mode.lock().unwrap_or_else(|e| e.into_inner());
+
+                            for frame in 0..frames {
+                                let mut left = processed_buffer[frame * 2];
+                                let mut right = processed_buffer[frame * 2 + 1];
+
+                                left *= left_gain;
+                                right *= right_gain;
+
+                                match current_mode {
+                                    OutputMode::Mono => {
+                                        let mono = (left + right) * 0.5;
+                                        left = mono;
+                                        right = mono;
+                                    }
+                                    OutputMode::Surround => {
+                                        let diff = (left - right) * 0.3;
+                                        left += diff;
+                                        right -= diff;
+                                    }
+                                    OutputMode::Stereo => {}
+                                }
+
+                                left *= vol;
+                                right *= vol;
+
+                                if !left.is_finite() {
+                                    left = 0.0;
+                                }
+                                if !right.is_finite() {
+                                    right = 0.0;
+                                }
+                                left = left.clamp(-0.99, 0.99);
+                                right = right.clamp(-0.99, 0.99);
+
+                                processed_buffer[frame * 2] = left;
+                                processed_buffer[frame * 2 + 1] = right;
                             }
-                            OutputMode::Stereo => {}
-                        }
 
-                        left *= vol;
-                        right *= vol;
+                            // Write to output (F32 path: write raw processed buffer)
+                            data.copy_from_slice(&processed_buffer);
 
-                        if !left.is_finite() { left = 0.0; }
-                        if !right.is_finite() { right = 0.0; }
-                        left = left.clamp(-0.99, 0.99);
-                        right = right.clamp(-0.99, 0.99);
+                            // Update samples played
+                            samples_played.fetch_add(frames as u64, Ordering::SeqCst);
+                        },
+                        |err| eprintln!("[AudioOutput] Stream error: {}", err),
+                        None,
+                    )
+                    .map_err(|e| format!("Failed to build output stream: {}", e))?;
 
-                        processed_buffer[frame * 2] = left;
-                        processed_buffer[frame * 2 + 1] = right;
-                    }
+                stream
+                    .play()
+                    .map_err(|e| format!("Failed to play stream: {}", e))?;
 
-                    // Write to output
-                    data.copy_from_slice(&processed_buffer);
+                Ok(stream)
+            }
+            _ => { return Err(format!("Unsupported sample format: {:?}", sample_format)); }
+            cpal::SampleFormat::I16 => {
+                let stream = device
+                    .build_output_stream(
+                        &config,
+                        move |data: &mut [i16], _: &cpal::OutputCallbackInfo| {
+                            // For brevity, reuse the F32 processing path and cast to i16 at write
+                            // This mirrors the F32 path but outputs 16-bit signed samples
+                            let samples_per_write = data.len();
+                            let channels = config.channels as usize;
+                            let frames = samples_per_write / channels;
 
-                    // Update samples played
-                    samples_played.fetch_add(frames as u64, Ordering::SeqCst);
-                },
-                |err| eprintln!("[AudioOutput] Stream error: {}", err),
-                None,
-            )
-            .map_err(|e| format!("Failed to build output stream: {}", e))?;
+                            // Buffers in f32 for processing
+                            let mut read_buffer = vec![0.0f32; samples_per_write];
+                            let mut processed_buffer = vec![0.0f32; samples_per_write];
+                            let mut norm_input = vec![0.0f32; samples_per_write];
 
-        stream.play().map_err(|e| format!("Failed to play stream: {}", e))?;
+                            let is_stopped = should_stop.load(Ordering::SeqCst);
+                            if is_stopped {
+                                for i in 0..samples_per_write {
+                                    data[i] = 0;
+                                }
+                                return;
+                            }
 
-        Ok(stream)
+                            let is_seeking = seek_mode.load(Ordering::SeqCst);
+                            let is_paused = paused.load(Ordering::SeqCst);
+                            let do_flush = flush.load(Ordering::SeqCst);
+
+                            if do_flush {
+                                if let Ok(mut c) = consumer.lock() {
+                                    if let Some(ref mut cons) = *c {
+                                        loop {
+                                            let drained = cons.pop_slice(&mut read_buffer);
+                                            if drained == 0 {
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                                flush.store(false, Ordering::SeqCst);
+                                empty_count.store(0, Ordering::SeqCst);
+                            }
+
+                            if is_seeking || is_paused {
+                                read_buffer.fill(0.0);
+                            } else {
+                                if let Ok(mut c) = consumer.lock() {
+                                    if let Some(ref mut cons) = *c {
+                                        let samples_read = cons.pop_slice(&mut read_buffer);
+                                        if samples_read == 0 {
+                                            empty_count.fetch_add(1, Ordering::Relaxed);
+                                        } else {
+                                            empty_count.store(0, Ordering::Relaxed);
+                                        }
+                                    }
+                                }
+                            }
+
+                            // DSP processing
+                            let state = output_state.load(Ordering::SeqCst);
+                            let is_eof = decoder_eof.load(Ordering::SeqCst);
+
+                            if state == OUTPUT_STATE_PRIMING && read_buffer.iter().any(|&x| x != 0.0) {
+                                output_state.store(OUTPUT_STATE_RUNNING, Ordering::SeqCst);
+                            }
+
+                            // ---- NORMALIZER (Engine Core - Always runs first) ----
+                            if normalizer_enabled.load(Ordering::SeqCst) {
+                                if let Ok(mut norm) = normalizer.try_lock() {
+                                    norm.process(&read_buffer[..samples_per_write], &mut processed_buffer[..samples_per_write]);
+                                }
+                            } else {
+                                processed_buffer[..samples_per_write].copy_from_slice(&read_buffer[..samples_per_write]);
+                            }
+
+                            // ---- DSP RACK (Toggleable) ----
+                            if dsp_enabled.load(Ordering::SeqCst) {
+                                if let Ok(chain) = dsp_chain.lock() {
+                                    // Use temp buffer to avoid borrow conflict
+                                    norm_input[..samples_per_write]
+                                        .copy_from_slice(&processed_buffer[..samples_per_write]);
+                                    chain.process(&norm_input[..samples_per_write], &mut processed_buffer[..samples_per_write]);
+                                }
+                            }
+
+                            // ---- LIMITER (Engine Core - Always runs after DSP) ----
+                            if limiter_enabled.load(Ordering::SeqCst) {
+                                if let Ok(mut limiter) = limiter.try_lock() {
+                                    // Use temp buffer to avoid borrow conflict
+                                    norm_input[..samples_per_write]
+                                        .copy_from_slice(&processed_buffer[..samples_per_write]);
+                                    limiter.process(&norm_input[..samples_per_write], &mut processed_buffer[..samples_per_write]);
+                                }
+                            }
+
+                            // Volume and balance
+                            let vol = f32::from_bits(volume.load(Ordering::Relaxed));
+                            let bal = f32::from_bits(balance.load(Ordering::Relaxed));
+                            let left_gain = if bal > 0.0 { 1.0 - bal } else { 1.0 };
+                            let right_gain = if bal < 0.0 { 1.0 + bal } else { 1.0 };
+
+                            let current_mode = *mode.lock().unwrap_or_else(|e| e.into_inner());
+
+                            for frame in 0..frames {
+                                let mut left = processed_buffer[frame * 2];
+                                let mut right = processed_buffer[frame * 2 + 1];
+
+                                left *= left_gain;
+                                right *= right_gain;
+
+                                match current_mode {
+                                    OutputMode::Mono => {
+                                        let mono = (left + right) * 0.5;
+                                        left = mono;
+                                        right = mono;
+                                    }
+                                    OutputMode::Surround => {
+                                        let diff = (left - right) * 0.3;
+                                        left += diff;
+                                        right -= diff;
+                                    }
+                                    OutputMode::Stereo => {}
+                                }
+
+                                left *= vol;
+                                right *= vol;
+
+                                if !left.is_finite() {
+                                    left = 0.0;
+                                }
+                                if !right.is_finite() {
+                                    right = 0.0;
+                                }
+                                left = left.clamp(-0.99, 0.99);
+                                right = right.clamp(-0.99, 0.99);
+
+                                processed_buffer[frame * 2] = left;
+                                processed_buffer[frame * 2 + 1] = right;
+                            }
+
+                            for i in 0..samples_per_write {
+                                data[i] = (processed_buffer[i] * 32767.0) as i16;
+                            }
+
+                            samples_played.fetch_add(frames as u64, Ordering::SeqCst);
+                        },
+                        |err| eprintln!("[AudioOutput] Stream error: {}", err),
+                        None,
+                    )
+                    .map_err(|e| format!("Failed to build output stream: {}", e))?;
+
+                stream
+                    .play()
+                    .map_err(|e| format!("Failed to play stream: {}", e))?;
+
+                Ok(stream)
+            }
+        }
     }
 
     pub fn stop(&self) {
@@ -674,7 +880,8 @@ impl AudioOutput {
         self.seek_fade_remaining.store(0, Ordering::SeqCst);
         self.resume_frame_counter.store(0, Ordering::SeqCst);
         self.paused.store(false, Ordering::SeqCst);
-        self.output_state.store(OUTPUT_STATE_STOPPING, Ordering::SeqCst);
+        self.output_state
+            .store(OUTPUT_STATE_STOPPING, Ordering::SeqCst);
 
         if let Ok(mut s) = self.stream.lock() {
             if let Some(ref stream) = *s {
@@ -700,7 +907,8 @@ impl AudioOutput {
 
     pub fn trigger_seek_fade(&self) {
         let fade_samples = (self.sample_rate as f32 * 0.015) as u32;
-        self.seek_fade_remaining.store(fade_samples, Ordering::SeqCst);
+        self.seek_fade_remaining
+            .store(fade_samples, Ordering::SeqCst);
     }
 
     pub fn set_seek_mode(&self, seeking: bool) {
@@ -714,7 +922,8 @@ impl AudioOutput {
     pub fn check_resume_counter(&self) -> bool {
         let remaining = self.resume_frame_counter.load(Ordering::SeqCst);
         if remaining > 0 {
-            self.resume_frame_counter.store(remaining - 1, Ordering::SeqCst);
+            self.resume_frame_counter
+                .store(remaining - 1, Ordering::SeqCst);
             return false;
         }
         true

@@ -38,7 +38,7 @@ pub fn clear_cache() {
 /// Parameters for the loudness scanner.
 #[derive(Clone)]
 pub struct ScanParams {
-    pub target_lufs: f32,
+    pub target_dbfs: f32,
     pub true_peak_dbtp: f32,
     pub max_gain_db: f32,
 }
@@ -46,15 +46,15 @@ pub struct ScanParams {
 impl Default for ScanParams {
     fn default() -> Self {
         Self {
-            target_lufs: -14.0,
+            target_dbfs: -16.0,
             true_peak_dbtp: -1.5,
-            max_gain_db: 12.0,
+            max_gain_db: 8.0,
         }
     }
 }
 
 /// Calculate track gain multiplier by decoding the entire file at max speed.
-/// Applies all 3 constraints: target_lufs, true_peak_ceiling, max_gain.
+/// Applies all 3 constraints: target_dbfs, true_peak_ceiling, max_gain.
 pub fn calculate_track_gain(path: &str, params: &ScanParams) -> f32 {
     // Check cache first
     if let Some(cached) = get_cached_gain(path) {
@@ -114,7 +114,8 @@ pub fn spawn_scan_with_callback(
         })
 }
 
-/// Internal: decode file, compute integrated RMS and true peak, apply constraints.
+/// RMS-based full-track normalization with peak ceiling protection.
+/// This is NOT LUFS measurement (no K-weighting, no gating).
 fn scan_loudness(path: &str, params: &ScanParams) -> f32 {
     ffmpeg::init().ok();
 
@@ -267,8 +268,13 @@ fn scan_loudness(path: &str, params: &ScanParams) -> f32 {
         -100.0
     };
 
-    // --- Gain from target_lufs ---
-    let diff = params.target_lufs - measured_loudness_db;
+    // Low energy protection: don't boost quiet tracks (intro, noise floor)
+    if measured_loudness_db < -50.0 {
+        return 1.0;
+    }
+
+    // --- Gain from target_dbfs ---
+    let diff = params.target_dbfs - measured_loudness_db;
     let mut gain = 10.0_f32.powf(diff / 20.0);
 
     // --- Constraint 1: Max Gain / Pre-Amp cap ---
@@ -278,13 +284,10 @@ fn scan_loudness(path: &str, params: &ScanParams) -> f32 {
     }
 
     // --- Constraint 2: True Peak Ceiling ---
-    // If boosted peak would exceed ceiling, reduce gain
     let peak_ceiling_linear = 10.0_f32.powf(params.true_peak_dbtp / 20.0);
-    if true_peak > 0.0 {
-        let projected_peak = true_peak * gain;
-        if projected_peak > peak_ceiling_linear {
-            gain = peak_ceiling_linear / true_peak;
-        }
+    if true_peak > 1e-6 {
+        let max_allowed = peak_ceiling_linear / true_peak;
+        gain = gain.min(max_allowed);
     }
 
     // Final safety clamp

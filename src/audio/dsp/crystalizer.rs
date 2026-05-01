@@ -99,6 +99,7 @@ impl DspProcessor for Crystalizer {
             let crystal_l = (hp_l * drive).tanh() * self.current_amount;
             let crystal_r = (hp_r * drive).tanh() * self.current_amount;
 
+            // Blend crystal effect with dry signal
             output[i] = left_in + crystal_l;
             output[i + 1] = right_in + crystal_r;
         }

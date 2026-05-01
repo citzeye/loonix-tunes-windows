@@ -64,11 +64,17 @@ impl Library {
     }
 
     pub fn get_folder_name(&self, index: usize) -> String {
-        self.custom_folders.get(index).map(|f| f.0.clone()).unwrap_or_default()
+        self.custom_folders
+            .get(index)
+            .map(|f| f.0.clone())
+            .unwrap_or_default()
     }
 
     pub fn get_folder_path(&self, index: usize) -> String {
-        self.custom_folders.get(index).map(|f| f.1.clone()).unwrap_or_default()
+        self.custom_folders
+            .get(index)
+            .map(|f| f.1.clone())
+            .unwrap_or_default()
     }
 
     pub fn scan_music_folder(&mut self, dir: &Path) {
@@ -97,13 +103,14 @@ impl Library {
                 }
             }
         }
-        
-        self.all_items.sort_by(|a, b| match (a.is_folder, b.is_folder) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-        });
-        
+
+        self.all_items
+            .sort_by(|a, b| match (a.is_folder, b.is_folder) {
+                (true, false) => std::cmp::Ordering::Less,
+                (false, true) => std::cmp::Ordering::Greater,
+                _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+            });
+
         self.display_list = self.all_items.clone();
     }
 

@@ -4,8 +4,12 @@ fn main() {
     #[cfg(windows)]
     {
         let project_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
-        let vendor_lib = std::path::Path::new(&project_dir).join("vendor").join("lib");
-        let vendor_bin = std::path::Path::new(&project_dir).join("vendor").join("bin");
+        let vendor_lib = std::path::Path::new(&project_dir)
+            .join("vendor")
+            .join("lib");
+        let vendor_bin = std::path::Path::new(&project_dir)
+            .join("vendor")
+            .join("bin");
 
         // 1. Tell linker to search for .lib files in vendor/lib
         println!("cargo:rustc-link-search=native={}", vendor_lib.display());
@@ -89,7 +93,10 @@ END
             // Link the .res file
             println!("cargo:rustc-link-arg={}", res_path);
         } else {
-            eprintln!("Warning: icon.ico not found at {}, skipping resource", icon_path);
+            eprintln!(
+                "Warning: icon.ico not found at {}, skipping resource",
+                icon_path
+            );
         }
     }
 
@@ -101,7 +108,9 @@ END
 // Copy DLLs from vendor/bin to target/{profile} for runtime
 fn copy_vendor_dlls(vendor_bin: &std::path::Path, project_dir: &str) {
     let profile = std::env::var("PROFILE").unwrap_or_else(|_| "debug".to_string());
-    let dst = std::path::Path::new(project_dir).join("target").join(&profile);
+    let dst = std::path::Path::new(project_dir)
+        .join("target")
+        .join(&profile);
 
     if let Ok(entries) = std::fs::read_dir(vendor_bin) {
         for entry in entries.flatten() {
@@ -135,7 +144,10 @@ fn find_windows_sdk_include() -> Option<String> {
     if let Ok(sdk_ver) = std::env::var("WindowsSdkVerBinPath") {
         // Extract version from path like "C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64"
         if let Some(version) = sdk_ver.rsplit("\\").next() {
-            let include_path = format!("C:/Program Files (x86)/Windows Kits/10/include/{}/ucrt", version);
+            let include_path = format!(
+                "C:/Program Files (x86)/Windows Kits/10/include/{}/ucrt",
+                version
+            );
             if std::path::Path::new(&include_path).exists() {
                 return Some(include_path);
             }

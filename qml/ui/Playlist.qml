@@ -154,13 +154,13 @@ Rectangle {
         Item {
           anchors.fill: parent
            anchors.leftMargin: {
-               // Jika dia item paling luar (gak punya parent_folder), 
-               // atau jika kita bukan di Tab Music, margin WAJIB 0.
-               if (model.parent_folder === "" || musicModel.current_tab_root !== "MUSIC") {
-                   return 0;
+               // Jika item ada di dalam folder (parent_folder terisi) -> padding 15
+               // Jika item di root level (parent_folder kosong) -> padding 0
+               // Hanya Tab Music yang bisa expand folder
+               if (model.parent_folder !== "") {
+                   return 15;
                }
-               // Jika dia di Tab Music DAN dia punya parent (hasil expand), kasih 15.
-               return 15;
+               return 0;
            }
 
           

@@ -1,8 +1,8 @@
 /* --- loonixtunesv2/src/audio/dsp/rack.rs | rack --- */
 
 use crate::audio::dsp::{
-    AudioNormalizer, BassBooster, Compressor, Crossfeed, Crystalizer, DspProcessor, DspSettings,
-    EqPreamp, EqProcessor, Limiter, MiddleClarity, PitchShifter, Reverb, StereoEnhance,
+    BassBooster, Compressor, Crossfeed, Crystalizer, DspProcessor, DspSettings,
+    EqPreamp, EqProcessor, MiddleClarity, PitchShifter, Reverb, StereoEnhance,
     StereoWidth, SurroundProcessor,
 };
 
@@ -36,8 +36,6 @@ impl DspRack {
         // karena tipe Vec sudah didefinisikan di atas.
 
         processors.push(Box::new(EqPreamp::new()));
-        processors.push(Box::new(AudioNormalizer::new(true, -14.0)));
-
         processors.push(Box::new(EqProcessor::new()));
         processors.push(Box::new(Compressor::new()));
         processors.push(Box::new(BassBooster::new()));
@@ -49,7 +47,6 @@ impl DspRack {
         processors.push(Box::new(PitchShifter::new()));
         processors.push(Box::new(MiddleClarity::new()));
         processors.push(Box::new(Crossfeed::new()));
-        processors.push(Box::new(Limiter::new()));
 
         processors
     }

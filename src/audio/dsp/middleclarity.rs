@@ -104,7 +104,8 @@ impl DspProcessor for MiddleClarity {
             self.y2 = self.y1;
             self.y1 = y;
 
-            output[i] = y;
+            // Blend processed signal with dry
+            output[i] = x + (y - x) * amount;
         }
     }
 

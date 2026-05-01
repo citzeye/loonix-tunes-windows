@@ -97,8 +97,12 @@ impl DspProcessor for BassBooster {
             let left = input[i];
             let right = input[i + 1];
 
-            output[i] = self.left_filter.process_sample(left);
-            output[i + 1] = self.right_filter.process_sample(right);
+            let boosted_l = self.left_filter.process_sample(left);
+            let boosted_r = self.right_filter.process_sample(right);
+
+            // Blend boosted bass with dry signal
+            output[i] = left + (boosted_l - left) * (self.current_gain / 12.0).min(1.0);
+            output[i + 1] = right + (boosted_r - right) * (self.current_gain / 12.0).min(1.0);
         }
     }
 

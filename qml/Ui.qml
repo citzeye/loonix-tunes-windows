@@ -27,7 +27,7 @@ Window {
     // Karena sekarang minimumWidth udah dikunci di 25%,
     // Window lo GAK AKAN BISA ditarik lebih kecil dari 25% oleh OS.
     // Tapi kita tetep pasang logic 25% di sini buat jaga-jaga.
-    readonly property real criticalWidth: Screen.width * 0.25
+    readonly property real criticalWidth: Screen.width * 0.3
 
     Rectangle {
         id: screenWarning
@@ -111,7 +111,7 @@ Window {
     property int prefThemeEditorProfileTarget: -1
 
     // MINIMAL: 30% dari lebar/tinggi monitor user
-    minimumWidth: Screen.width * 0.25
+    minimumWidth: Screen.width * 0.3
     minimumHeight: Screen.height * 0.25
 
     // MAKSIMAL: 100% dari area kerja monitor (biar gak bablas ke taskbar)

@@ -1,7 +1,12 @@
 /* --- loonixtunesv2/src/main.rs | main --- */
+// TEMPORARY: Enable console for debugging silent crashes
+// #![cfg_attr(
+//     all(target_os = "windows", not(debug_assertions)),
+//     windows_subsystem = "windows"
+// )]
 #![cfg_attr(
     all(target_os = "windows", not(debug_assertions)),
-    windows_subsystem = "windows"
+    windows_subsystem = "console"
 )]
 #![cfg_attr(
     all(target_os = "windows", debug_assertions),
@@ -33,13 +38,13 @@ pub mod audio;
 pub mod core;
 pub mod ui;
 
-use crate::ui::bridge::MusicModel;
 use crate::ui::bridge::DspController;
+use crate::ui::bridge::MusicModel;
 use crate::ui::bridge::PlayerBridge;
 use crate::ui::components::ThemeManager;
+use crate::ui::reportbug::BugReportManager;
 use crate::ui::CustomThemeListModel;
 use crate::ui::PopupMenu;
-use crate::ui::reportbug::BugReportManager;
 
 struct App {
     music_model: QObjectBox<MusicModel>,
@@ -91,21 +96,27 @@ impl App {
 
 fn setup_env() {
     std::env::set_var("QT_QUICK_CONTROLS_STYLE", "Fusion");
-    
+
     let exe_path = std::env::current_exe().unwrap_or_default();
     let base_dir = exe_path.parent().unwrap_or(std::path::Path::new("."));
     let plugin_path = base_dir.join("platforms");
     if plugin_path.exists() {
-        std::env::set_var("QT_QPA_PLATFORM_PLUGIN_PATH", plugin_path.to_string_lossy().as_ref());
+        std::env::set_var(
+            "QT_QPA_PLATFORM_PLUGIN_PATH",
+            plugin_path.to_string_lossy().as_ref(),
+        );
     } else {
-        std::env::set_var("QT_QPA_PLATFORM_PLUGIN_PATH", "C:\\dev\\6.8.3\\msvc2022_64\\plugins\\platforms");
+        std::env::set_var(
+            "QT_QPA_PLATFORM_PLUGIN_PATH",
+            "C:\\dev\\6.8.3\\msvc2022_64\\plugins\\platforms",
+        );
     }
 }
 
 fn main() {
     setup_panic_logger();
     setup_env();
-    
+
     init_resources_v4();
 
     let app = App::new();
@@ -134,7 +145,9 @@ fn main() {
         crate::ui::bridge::core::set_command_line_files(files);
     }
 
-    engine.load_file("qml/Ui.qml".into());
+    // Use Qt Resource system (qrc) instead of relative path
+    // The qrc! macro at bottom embeds QML files into the binary
+    engine.load_file("qrc:/qml/Ui.qml".into());
     engine.exec();
 }
 
