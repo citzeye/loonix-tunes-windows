@@ -18,6 +18,7 @@ pub struct PlaybackController {
     pub loop_active: bool,
     pub shuffle_queue: Vec<i32>,
     pub queue_index: usize,
+    pub shuffle_scope_folder: Option<String>,
 
     pub tick_counter: u32,
 }
@@ -36,6 +37,7 @@ impl Default for PlaybackController {
             loop_active: false,
             shuffle_queue: Vec::new(),
             queue_index: 0,
+            shuffle_scope_folder: None,
             tick_counter: 0,
         }
     }
@@ -55,6 +57,7 @@ impl PlaybackController {
             loop_active: false,
             shuffle_queue: Vec::new(),
             queue_index: 0,
+            shuffle_scope_folder: None,
             tick_counter: 0,
         }
     }
@@ -156,12 +159,33 @@ impl PlaybackController {
         }
     }
 
-    pub fn toggle_shuffle(&mut self, display_list: &[MusicItem], current_idx: i32) {
+    pub fn toggle_shuffle(&mut self, display_list: &[MusicItem], current_idx: i32, folder_scope: Option<&str>) {
         self.shuffle_active = !self.shuffle_active;
 
         if self.shuffle_active && !display_list.is_empty() {
-            let total = display_list.len();
-            let mut indices: Vec<i32> = (0..total as i32).collect();
+            self.shuffle_scope_folder = folder_scope.map(|s| s.to_string());
+
+            let indices: Vec<i32> = if let Some(scope) = &self.shuffle_scope_folder {
+                display_list
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, item)| {
+                        // Only include non-folder items that belong to the scope folder
+                        !item.is_folder && item.parent_folder.as_deref() == Some(scope)
+                    })
+                    .map(|(i, _)| i as i32)
+                    .collect()
+            } else {
+                (0..display_list.len() as i32).collect()
+            };
+
+            if indices.is_empty() {
+                self.shuffle_active = false;
+                return;
+            }
+
+            let total = indices.len();
+            let mut indices: Vec<i32> = indices;
 
             // Fisher-Yates with better seed (LCG)
             use std::time::{SystemTime, UNIX_EPOCH};
@@ -202,7 +226,6 @@ impl PlaybackController {
             return None;
         }
 
-        let total = display_list.len();
         let next_idx = if self.shuffle_active {
             if self.queue_index + 1 >= self.shuffle_queue.len() {
                 if self.loop_active {
@@ -215,6 +238,7 @@ impl PlaybackController {
             }
             self.shuffle_queue[self.queue_index] as usize
         } else {
+            let total = display_list.len();
             let next = current_idx + 1;
             if next >= total as i32 {
                 if self.loop_active {
@@ -239,13 +263,13 @@ impl PlaybackController {
             return None;
         }
 
-        let total = display_list.len();
         let prev_idx = if self.shuffle_active {
             if self.queue_index > 0 {
                 self.queue_index -= 1;
             }
             self.shuffle_queue[self.queue_index] as usize
         } else {
+            let total = display_list.len();
             let prev = current_idx - 1;
             if prev < 0 {
                 if self.loop_active {

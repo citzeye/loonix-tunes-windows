@@ -34,6 +34,7 @@ Rectangle {
     onClicked: function(mouse) {
       if (mouse.button === Qt.LeftButton) {
         musicModel.switch_to_favorites()
+        root.playlistSource = "qrc:/qml/ui/playlist/Playlist.qml"
       }
     }
   }

@@ -9,6 +9,9 @@ pub mod engine;
 // DSP
 pub mod dsp;
 
+// Sample Rate Manager
+pub mod samplerate;
+
 // Config & state
 pub mod config;
 

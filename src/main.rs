@@ -17,7 +17,7 @@ use qmetaobject::*;
 
 fn setup_panic_logger() {
     std::panic::set_hook(Box::new(|panic_info| {
-        if let Some(mut appdata) = dirs::data_dir() {
+        if let Some(appdata) = dirs::data_dir() {
             let _ = std::fs::create_dir_all(&appdata);
             let log_path = appdata.join("loonix-tunes").join("panic_dump.log");
             if let Ok(mut file) = std::fs::OpenOptions::new()
@@ -117,6 +117,9 @@ fn main() {
     setup_panic_logger();
     setup_env();
 
+    // 1. Initialize Sample Rate Manager (must be before audio engine starts)
+    crate::audio::samplerate::init_sample_rate();
+
     init_resources_v4();
 
     let app = App::new();
@@ -165,7 +168,7 @@ qmetaobject::qrc!(init_resources_v4,
         "qml/ui/contextmenu/TabContextMenu.qml",
         "qml/ui/contextmenu/PlaylistContextMenu.qml",
         "qml/ui/contextmenu/AppearanceContextMenu.qml",
-        "qml/ui/Playlist.qml",
+        "qml/ui/playlist/Playlist.qml",
         "qml/ui/Pref.qml",
         "qml/ui/pref/PrefAbout.qml",
         "qml/ui/pref/PrefDonate.qml",

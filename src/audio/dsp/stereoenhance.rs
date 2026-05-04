@@ -28,13 +28,16 @@ impl StereoEnhance {
 }
 
 impl DspProcessor for StereoEnhance {
+    #[inline(always)]
     fn process(&mut self, input: &[f32], output: &mut [f32]) {
         let is_on = get_stereo_enabled_arc().load(Ordering::Relaxed);
         let amount = bits_to_f32(get_stereo_amount_arc().load(Ordering::Relaxed));
 
-        // Auto-Bypass
+        // Auto-Bypass - FIX: Pastikan copy benar dengan bounds check
         if !is_on || amount < 0.01 {
-            output.copy_from_slice(input);
+            if output.len() >= input.len() {
+                output[..input.len()].copy_from_slice(input);
+            }
             return;
         }
 
@@ -45,7 +48,6 @@ impl DspProcessor for StereoEnhance {
             let left = input[i];
             let right = input[i + 1];
 
-            let mid = (left + right) * 0.5;
             let side = (left - right) * 0.5;
             let widened_side = side * amount; // Blend with dry signal
             let new_left = left + widened_side;

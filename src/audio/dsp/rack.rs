@@ -41,7 +41,7 @@ impl DspRack {
         processors.push(Box::new(BassBooster::new()));
         processors.push(Box::new(Reverb::new()));
         processors.push(Box::new(StereoEnhance::new()));
-        processors.push(Box::new(Crystalizer::new(48000.0)));
+        processors.push(Box::new(Crystalizer::new()));
         processors.push(Box::new(SurroundProcessor::new()));
         processors.push(Box::new(StereoWidth::new()));
         processors.push(Box::new(PitchShifter::new()));
@@ -49,6 +49,12 @@ impl DspRack {
         processors.push(Box::new(Crossfeed::new()));
 
         processors
+    }
+
+    pub fn set_sample_rate(&mut self, rate: f32) {
+        for processor in self.processors.iter_mut() {
+            processor.set_sample_rate(rate);
+        }
     }
 
     pub fn process(&mut self, input: &[f32], output: &mut [f32]) {

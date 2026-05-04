@@ -1,6 +1,7 @@
 /* --- loonixtunesv2/src/audio/io/audiobus.rs | audiobus --- */
 // Audio signal path & buffer management
 
+use crate::audio::samplerate; // Import sample rate module
 use ringbuf::traits::Split;
 use ringbuf::{HeapProd, HeapRb};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -32,7 +33,7 @@ impl AudioBus {
             producer: Arc::new(Mutex::new(prod)),
             is_running: Arc::new(AtomicBool::new(false)),
             is_paused: Arc::new(AtomicBool::new(false)),
-            sample_rate: 48000,
+            sample_rate: samplerate::get_rate_u32(), // Use global sample rate
             channels: 2,
             buffer_size,
         }

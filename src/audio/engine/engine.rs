@@ -1,6 +1,7 @@
 /* --- loonixtunesv2/src/audio/engine/engine.rs | engine --- */
 
 use crate::audio::dsp::DspSettings;
+use crate::audio::samplerate; // Import sample rate module
 use crate::audio::io::audiooutput::AudioOutput;
 use crate::audio::io::audiooutput::OutputState;
 use crate::audio::io::decoder;
@@ -207,13 +208,13 @@ impl Engine {
         }
 
         // 1. Setup Ring Buffer - 120ms for low latency
-        let sample_rate = 48000; // frames per second
-        let channels = 2; // Output always forced to STEREO by resampler (see decoder.rs)
-        self.channels = channels;
-        let buffer_ms = 120;
+        let sample_rate = samplerate::get_rate_u32() as usize; // Use global sample rate
+        let channels = 2usize; // Output always forced to STEREO by resampler (see decoder.rs)
+        self.channels = channels as u32;
+        let buffer_ms: usize = 120;
         // Calculate buffer size in SAMPLES (f32 values), not frames
-        // 120ms @ 48kHz stereo = 11520 samples (~46 KB)
-        let buffer_size = (sample_rate * channels * buffer_ms / 1000) as usize;
+        // 120ms @ sample_rate stereo = variable size
+        let buffer_size = (sample_rate as usize) * channels * buffer_ms / 1000;
 
         let rb = HeapRb::<f32>::new(buffer_size);
         let (prod, cons) = rb.split();
@@ -231,8 +232,8 @@ impl Engine {
         // 4. Store receiver in Engine
         self.event_rx = Some(rx);
 
-        // 5. Force 48kHz sample rate
-        let actual_sample_rate = 48000;
+        // 5. Use global sample rate instead of hardcoded 48000
+        let actual_sample_rate = samplerate::get_rate_u32();
         self.sample_rate = actual_sample_rate as u64;
         self.samples_played = 0;
         self.duration_ms = 0; // Reset so get_duration() uses metadata initially
@@ -243,11 +244,10 @@ impl Engine {
         // 6. Spawn Decoder Thread
         let path_clone = path.clone();
         if let Some(producer) = self.producer.take() {
-            self.decoder_handle = Some(decoder::spawn_decoder_with_sample_rate(
+            self.decoder_handle = Some(decoder::spawn_decoder(
                 path_clone,
                 producer,
                 control_for_decoder.clone(),
-                actual_sample_rate,
                 ab_loop.clone(),
             ));
         } else {
@@ -262,8 +262,8 @@ impl Engine {
             audiooutput.update_mode_internal();
             audiooutput.set_volume(self.volume);
             audiooutput.set_balance(self.balance);
-            // Chain already built at startup - no need to rebuild on track change
-            audiooutput.reset_dsp();
+            // FIX: Only propagate DSP enabled flag (chain already built at startup)
+            audiooutput.set_dsp_enabled(self.dsp_enabled);
             audiooutput.reset_samples_played(0);
             // clear_old=true: fresh track start, don't crossfade from old track's buffer
             audiooutput.start(cons, true, buffer_size);
@@ -464,6 +464,8 @@ impl Engine {
 
         if let Some(ref mut audiooutput) = self.audiooutput {
             audiooutput.set_samples_played(self.paused_samples_played);
+            // Flush stale data from ring buffer that accumulated while paused
+            audiooutput.flush_on_resume();
             audiooutput.resume();
         }
 
@@ -815,6 +817,10 @@ impl FfmpegEngine {
     pub fn load(&mut self, path: &str) {
         self.ensure_engine();
         self.is_finished = false;
+
+        if std::path::Path::new(path).is_dir() {
+            return;
+        }
 
         if let Some(engine) = &mut self.engine {
             engine.stop();

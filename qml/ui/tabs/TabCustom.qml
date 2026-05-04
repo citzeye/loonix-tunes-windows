@@ -31,7 +31,7 @@ Rectangle {
   Text {
     id: tabText
     anchors.centerIn: parent
-    text: (refreshTicker, musicModel.get_custom_folder_name(index))
+    text: (refreshTicker, musicModel.get_custom_folder_name(index).toUpperCase())
     font.family: kodeMono.name
     font.pixelSize: 10
     font.bold: parent.isActive
@@ -48,6 +48,7 @@ Rectangle {
     onClicked: function(mouse) {
       if (mouse.button === Qt.LeftButton) {
         musicModel.switch_to_folder(musicModel.get_custom_folder_path(index))
+        root.playlistSource = "qrc:/qml/ui/playlist/Playlist.qml"
       } else if (mouse.button === Qt.RightButton) {
         root.popupMenuVisible = false
         root.playlistContextMenuVisible = false

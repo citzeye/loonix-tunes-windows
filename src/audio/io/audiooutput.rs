@@ -66,7 +66,6 @@ impl Default for OutputState {
 const OUTPUT_STATE_PRIMING: u32 = 0;
 const OUTPUT_STATE_RUNNING: u32 = 1;
 const OUTPUT_STATE_STOPPING: u32 = 2;
-const OUTPUT_STATE_ERROR: u32 = 3;
 
 pub struct AudioOutput {
     is_running: Arc<AtomicBool>,
@@ -511,7 +510,7 @@ impl AudioOutput {
         self.paused.store(false, Ordering::SeqCst);
     }
 
-    fn create_cpal_stream(&self, sample_rate: u32) -> Result<cpal::Stream, String> {
+    fn create_cpal_stream(&self, _sample_rate: u32) -> Result<cpal::Stream, String> {
         let host = cpal::default_host();
 
         let device = host
@@ -535,7 +534,7 @@ impl AudioOutput {
         let _device_rate_for_decoder = device_rate;
         let config: cpal::StreamConfig = supported_config.into();
 
-        let channels = config.channels as usize;
+        let _channels = config.channels as usize;
 
         // Capture shared state for callback
         let consumer = self.stream_consumer.clone();
@@ -543,7 +542,7 @@ impl AudioOutput {
         let seek_mode = self.stream_seek_mode.clone();
         let paused = self.stream_paused.clone();
         let flush = self.stream_flush.clone();
-        let seek_fade = self.stream_seek_fade.clone();
+        let _seek_fade = self.stream_seek_fade.clone();
         let volume = self.stream_volume.clone();
         let balance = self.stream_balance.clone();
         let mode = self.stream_mode.clone();
@@ -557,7 +556,7 @@ impl AudioOutput {
         let empty_count = self.stream_empty_count.clone();
         let output_state = self.stream_output_state.clone();
         let decoder_eof = self.stream_decoder_eof.clone();
-        let bt_detected = self.stream_bt_detected.clone();
+        let _bt_detected = self.stream_bt_detected.clone();
 
         match sample_format {
             cpal::SampleFormat::F32 => {
@@ -712,7 +711,6 @@ impl AudioOutput {
 
                 Ok(stream)
             }
-            _ => { return Err(format!("Unsupported sample format: {:?}", sample_format)); }
             cpal::SampleFormat::I16 => {
                 let stream = device
                     .build_output_stream(
@@ -773,7 +771,7 @@ impl AudioOutput {
 
                             // DSP processing
                             let state = output_state.load(Ordering::SeqCst);
-                            let is_eof = decoder_eof.load(Ordering::SeqCst);
+                            let _is_eof = decoder_eof.load(Ordering::SeqCst);
 
                             if state == OUTPUT_STATE_PRIMING && read_buffer.iter().any(|&x| x != 0.0) {
                                 output_state.store(OUTPUT_STATE_RUNNING, Ordering::SeqCst);
@@ -870,6 +868,8 @@ impl AudioOutput {
 
                 Ok(stream)
             }
+            // Any other format is unsupported
+            _ => { return Err(format!("Unsupported sample format: {:?}", sample_format)); }
         }
     }
 
@@ -899,10 +899,16 @@ impl AudioOutput {
 
     pub fn pause(&mut self) {
         self.paused.store(true, Ordering::SeqCst);
+        self.stream_paused.store(true, Ordering::SeqCst);
     }
 
     pub fn is_paused(&self) -> bool {
-        self.paused.load(Ordering::SeqCst)
+        self.stream_paused.load(Ordering::SeqCst)
+    }
+
+    pub fn flush_on_resume(&self) {
+        // Signal callback to flush stale data from ring buffer
+        self.stream_flush.store(true, Ordering::SeqCst);
     }
 
     pub fn trigger_seek_fade(&self) {
@@ -931,6 +937,7 @@ impl AudioOutput {
 
     pub fn resume(&mut self) {
         self.paused.store(false, Ordering::SeqCst);
+        self.stream_paused.store(false, Ordering::SeqCst);
         self.is_running.store(true, Ordering::SeqCst);
     }
 }

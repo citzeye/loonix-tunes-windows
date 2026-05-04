@@ -1,5 +1,6 @@
 /* --- loonixtunesv2/src/audio/io/decoder.rs | decoder --- */
 
+use crate::audio::samplerate; // Import sample rate module
 use ffmpeg::format::input;
 use ffmpeg::media::Type;
 use ffmpeg::util::frame::audio::Audio as AudioFrame;
@@ -128,7 +129,9 @@ pub fn spawn_decoder(
     control: Arc<DecoderControl>,
     ab_loop: Arc<Mutex<crate::audio::engine::abloop::ABLoop>>,
 ) -> DecoderHandle {
-    spawn_decoder_with_sample_rate(path, producer, control, 48000, ab_loop)
+    // Use global sample rate instead of hardcoded 48000
+    let rate = samplerate::get_rate_u32();
+    spawn_decoder_with_sample_rate(path, producer, control, rate, ab_loop)
 }
 
 pub fn spawn_decoder_with_sample_rate(

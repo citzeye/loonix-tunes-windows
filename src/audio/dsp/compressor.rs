@@ -1,6 +1,7 @@
 /* --- loonixtunesv2/src/audio/dsp/compressor.rs | compressor --- */
 
 use crate::audio::dsp::DspProcessor;
+use crate::audio::samplerate; // Import sample rate module
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, OnceLock};
 
@@ -32,7 +33,6 @@ pub struct Compressor {
     attack_ms: f32,
     release_ms: f32,
     makeup_gain_db: f32,
-    sample_rate: f32,
     envelope: f32,
     env_coef_attack: f32,
     env_coef_release: f32,
@@ -46,7 +46,6 @@ impl Compressor {
             attack_ms: 10.0,
             release_ms: 100.0,
             makeup_gain_db: 0.0,
-            sample_rate: 48000.0,
             envelope: 0.0,
             env_coef_attack: 0.0,
             env_coef_release: 0.0,
@@ -55,9 +54,16 @@ impl Compressor {
         comp
     }
 
+    pub fn set_sample_rate(&mut self, _rate: f32) {
+        // Rate is managed globally by samplerate module
+    }
+
     fn update_coefficients(&mut self) {
-        self.env_coef_attack = (-1.0 / (self.attack_ms * 0.001 * self.sample_rate)).exp();
-        self.env_coef_release = (-1.0 / (self.release_ms * 0.001 * self.sample_rate)).exp();
+        let rate = samplerate::get_rate();
+        if rate > 0.0 {
+            self.env_coef_attack = (-1.0 / (self.attack_ms * 0.001 * rate)).exp();
+            self.env_coef_release = (-1.0 / (self.release_ms * 0.001 * rate)).exp();
+        }
     }
 
     pub fn set_threshold(&mut self, threshold_db: f32) {
@@ -90,6 +96,12 @@ impl DspProcessor for Compressor {
         if !enabled {
             output.copy_from_slice(input);
             return;
+        }
+
+        // Check if sample rate changed
+        let rate_changed = samplerate::consume_rate_changed();
+        if rate_changed {
+            self.update_coefficients();
         }
 
         // Read threshold from atomic (set by UI slider)

@@ -1,6 +1,7 @@
 /* --- loonixtunesv2/src/audio/dsp/surround.rs | surround --- */
 
 use crate::audio::dsp::DspProcessor;
+use crate::audio::samplerate; // Import sample rate module
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::OnceLock;
 
@@ -42,25 +43,13 @@ pub struct SurroundProcessor {
 
 impl SurroundProcessor {
     pub fn new() -> Self {
-        let sample_rate = 48000.0;
-
-        // Bass protection cutoff (preserve drum thump - 60Hz allows fundamental bass frequencies)
-        let hp_cutoff = 60.0;
-        let rc = 1.0 / (2.0 * std::f32::consts::PI * hp_cutoff);
-        let dt = 1.0 / sample_rate;
-        let hp_coeff = rc / (rc + dt);
-
-        // 5ms smoothing
-        let smoothing_time = 0.005;
-        let smoothing_coeff = (-1.0 / (sample_rate * smoothing_time)).exp();
-
         Self {
             current_width: 1.0,
             target_width: 1.0,
             hp_prev_in: 0.0,
             hp_prev_out: 0.0,
-            hp_coeff,
-            smoothing_coeff,
+            hp_coeff: 0.0,
+            smoothing_coeff: 0.0,
         }
     }
 
@@ -84,8 +73,28 @@ impl DspProcessor for SurroundProcessor {
         let bass_safe = bits_to_f32(get_surround_bass_safe_arc().load(Ordering::Relaxed));
 
         if !is_on {
-            output.copy_from_slice(input);
+            // FIX: Pastikan copy benar dengan bounds check
+            if output.len() >= input.len() {
+                output[..input.len()].copy_from_slice(input);
+            }
             return;
+        }
+
+        // Check if sample rate changed
+        let rate_changed = samplerate::consume_rate_changed();
+        if rate_changed {
+            let rate = samplerate::get_rate();
+            if rate > 0.0 {
+                // Bass protection cutoff (preserve drum thump - 60Hz allows fundamental bass frequencies)
+                let hp_cutoff = 60.0;
+                let rc = 1.0 / (2.0 * std::f32::consts::PI * hp_cutoff);
+                let dt = 1.0 / rate;
+                self.hp_coeff = rc / (rc + dt);
+
+                // 5ms smoothing
+                let smoothing_time = 0.005;
+                self.smoothing_coeff = (-1.0 / (rate * smoothing_time)).exp();
+            }
         }
 
         // Soft-limit width supaya tidak brutal

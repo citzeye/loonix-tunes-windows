@@ -117,12 +117,16 @@ pub fn spawn_scan_with_callback(
 /// RMS-based full-track normalization with peak ceiling protection.
 /// This is NOT LUFS measurement (no K-weighting, no gating).
 fn scan_loudness(path: &str, params: &ScanParams) -> f32 {
+    // Skip folders - only scan actual audio files
+    if std::path::Path::new(path).is_dir() {
+        return 1.0;
+    }
+
     ffmpeg::init().ok();
 
     let mut ictx = match input(&path) {
         Ok(i) => i,
-        Err(e) => {
-            eprintln!("[SCANNER] Failed to open {}: {}", path, e);
+        Err(_) => {
             return 1.0;
         }
     };
@@ -130,7 +134,6 @@ fn scan_loudness(path: &str, params: &ScanParams) -> f32 {
     let input_stream = match ictx.streams().best(Type::Audio) {
         Some(s) => s,
         None => {
-            eprintln!("[SCANNER] No audio stream in {}", path);
             return 1.0;
         }
     };

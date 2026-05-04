@@ -1,6 +1,6 @@
 /* --- loonixtunesv2/src/audio/engine/library.rs | library --- */
 use crate::audio::config::AppConfig;
-use crate::audio::engine::{is_audio_file, MusicItem};
+use crate::audio::engine::{ is_audio_file, MusicItem };
 use std::path::Path;
 use std::thread;
 
@@ -104,12 +104,13 @@ impl Library {
             }
         }
 
-        self.all_items
-            .sort_by(|a, b| match (a.is_folder, b.is_folder) {
+        self.all_items.sort_by(|a, b| {
+            match (a.is_folder, b.is_folder) {
                 (true, false) => std::cmp::Ordering::Less,
                 (false, true) => std::cmp::Ordering::Greater,
                 _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-            });
+            }
+        });
 
         self.display_list = self.all_items.clone();
     }
@@ -188,20 +189,19 @@ impl Library {
         cfg.custom_folders = self.custom_folders.clone();
     }
 
-    pub fn scan_music_async<F>(callback: F)
-    where
-        F: FnOnce(Vec<MusicItem>) + Send + 'static,
-    {
+    pub fn scan_music_async<F>(callback: F) where F: FnOnce(Vec<MusicItem>) + Send + 'static {
         thread::spawn(move || {
-            let music_dir = get_music_directory();
+        let music_dir = Self::get_music_directory();
 
-            let mut items = Vec::new();
-            scan_directory_sync(&music_dir, &mut items);
+        let mut items = Vec::new();
+        Self::scan_directory_sync(&music_dir, &mut items);
 
-            items.sort_by(|a, b| match (a.is_folder, b.is_folder) {
-                (true, false) => std::cmp::Ordering::Less,
-                (false, true) => std::cmp::Ordering::Greater,
-                _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+            items.sort_by(|a, b| {
+                match (a.is_folder, b.is_folder) {
+                    (true, false) => std::cmp::Ordering::Less,
+                    (false, true) => std::cmp::Ordering::Greater,
+                    _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+                }
             });
 
             callback(items);
@@ -209,7 +209,7 @@ impl Library {
     }
 
     pub fn scan_music(&mut self) {
-        let music_dir = get_music_directory();
+        let music_dir = Self::get_music_directory();
 
         self.current_folder = String::new();
         self.items.clear();
@@ -217,10 +217,12 @@ impl Library {
 
         self.scan_directory(&music_dir);
 
-        self.items.sort_by(|a, b| match (a.is_folder, b.is_folder) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+        self.items.sort_by(|a, b| {
+            match (a.is_folder, b.is_folder) {
+                (true, false) => std::cmp::Ordering::Less,
+                (false, true) => std::cmp::Ordering::Greater,
+                _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+            }
         });
     }
 
@@ -266,52 +268,53 @@ impl Library {
             }
         }
 
-        self.items
-            .sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+        self.items.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
     }
 
     pub fn get_sorted_items(&self) -> Vec<MusicItem> {
         let mut items = self.items.clone();
-        items.sort_by(|a, b| match (a.is_folder, b.is_folder) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+        items.sort_by(|a, b| {
+            match (a.is_folder, b.is_folder) {
+                (true, false) => std::cmp::Ordering::Less,
+                (false, true) => std::cmp::Ordering::Greater,
+                _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+            }
         });
         items
     }
-}
 
-fn scan_directory_sync(dir: &Path, items: &mut Vec<MusicItem>) {
-    if let Ok(entries) = std::fs::read_dir(dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            let name = entry.file_name().to_string_lossy().to_string();
+    fn scan_directory_sync(dir: &Path, items: &mut Vec<MusicItem>) {
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let name = entry.file_name().to_string_lossy().to_string();
 
-            if path.is_dir() {
-                items.push(MusicItem {
-                    name,
-                    path: path.to_string_lossy().to_string(),
-                    is_folder: true,
-                    parent_folder: None,
-                });
-            } else if is_audio_file(&path) {
-                items.push(MusicItem {
-                    name,
-                    path: path.to_string_lossy().to_string(),
-                    is_folder: false,
-                    parent_folder: None,
-                });
+                if path.is_dir() {
+                    items.push(MusicItem {
+                        name,
+                        path: path.to_string_lossy().to_string(),
+                        is_folder: true,
+                        parent_folder: None,
+                    });
+                } else if is_audio_file(&path) {
+                    items.push(MusicItem {
+                        name,
+                        path: path.to_string_lossy().to_string(),
+                        is_folder: false,
+                        parent_folder: None,
+                    });
+                }
             }
         }
     }
-}
 
-fn get_music_directory() -> std::path::PathBuf {
-    if let Some(audio_dir) = dirs::audio_dir() {
-        return audio_dir;
+    fn get_music_directory() -> std::path::PathBuf {
+        if let Some(audio_dir) = dirs::audio_dir() {
+            return audio_dir;
+        }
+        if let Some(home) = dirs::home_dir() {
+            return home.join("Music");
+        }
+        std::path::PathBuf::from(".")
     }
-    if let Some(home) = dirs::home_dir() {
-        return home.join("Music");
-    }
-    std::path::PathBuf::from(".")
 }

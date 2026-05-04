@@ -145,6 +145,8 @@ Window {
 
     property bool isInitialized: false
 
+    property string playlistSource: "qrc:/qml/ui/playlist/Playlist.qml"
+
     onXChanged: if (isInitialized) {
         musicModel.save_window_position(root.x, root.y, root.width, root.height);
     }
@@ -161,7 +163,7 @@ Window {
     Timer {
         id: positionUpdateTimer
         interval: 33  // ~30fps, cukup smooth tanpa beban CPU
-        running: true
+        running: musicModel.is_playing
         repeat: true
         triggeredOnStart: false
         onTriggered: {
@@ -1183,10 +1185,11 @@ Window {
             // ==========================================
             // SECTION: PLAYLIST
             // ==========================================
-            Playlist {
-                id: playlistSection
+            Loader {
+                id: playlistLoader
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                source: root.playlistSource
             }
         }
     }

@@ -707,7 +707,7 @@ impl MusicModel {
 
     pub fn toggle_shuffle(&mut self) {
         self.playback
-            .toggle_shuffle(&self.display_list, self.current_index);
+            .toggle_shuffle(&self.display_list, self.current_index, None);
         // Langsung tembak ke property QML (self.shuffle) ngambil dari playback
         self.shuffle = self.playback.shuffle_active;
         self.shuffle_changed();

@@ -38,6 +38,7 @@ Rectangle {
     onClicked: function(mouse) {
       if (mouse.button === Qt.LeftButton) {
         musicModel.switch_to_queue()
+        root.playlistSource = "qrc:/qml/ui/playlist/Playlist.qml"
       }
     }
   }
