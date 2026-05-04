@@ -99,6 +99,7 @@ pub struct DspController {
 
     pub preamp_active: qt_property!(bool; NOTIFY preamp_changed),
     pub preamp_changed: qt_signal!(),
+    pub preamp_value: qt_property!(f64; NOTIFY preamp_changed),
     pub limiter_active: qt_property!(bool; NOTIFY limiter_changed),
     pub limiter_changed: qt_signal!(),
     pub normalizer_enabled: qt_property!(bool; NOTIFY normalizer_changed),
@@ -294,6 +295,7 @@ impl DspController {
             };
             crate::audio::dsp::eqpreamp::get_preamp_gain_arc()
                 .store(linear_gain.to_bits(), std::sync::atomic::Ordering::Relaxed);
+            self.preamp_value = dsp_config.preamp_db as f64;
             self.dsp_changed();
 
             // Load user preset data from JSON
@@ -612,9 +614,9 @@ impl DspController {
         crate::audio::dsp::bassbooster::get_bass_freq_arc()
             .store(80.0_f32.to_bits(), std::sync::atomic::Ordering::Relaxed);
 
-        self.surround_width = 1.8;
+        self.surround_width = 1.0; // UI: 1.0 = bypass
         crate::audio::dsp::surround::get_surround_width_arc()
-            .store(1.8_f32.to_bits(), std::sync::atomic::Ordering::Relaxed);
+            .store(1.0_f32.to_bits(), std::sync::atomic::Ordering::Relaxed);
 
         self.crystal_amount = 0.0;
 
@@ -759,6 +761,14 @@ impl DspController {
 
         let preset = &self.eq_presets[index as usize];
 
+        // Set preamp from preset (for headroom compensation)
+        let preamp_db = preset.preamp as f64;
+        let linear_gain = 10.0_f32.powf(preamp_db as f32 / 20.0);
+        crate::audio::dsp::eqpreamp::get_preamp_gain_arc()
+            .store(linear_gain.to_bits(), std::sync::atomic::Ordering::Relaxed);
+        self.preamp_value = preamp_db;
+        self.preamp_changed();
+
         for (i, &gain) in preset.gains.iter().enumerate() {
             self.eq_bands_internal[i] = gain;
             let arc = crate::audio::dsp::eq::get_eq_bands_arc();
@@ -811,6 +821,13 @@ impl DspController {
                 self.fader_offset = 0.0;
                 if idx < self.eq_presets.len() {
                     let eq_preset = &self.eq_presets[idx];
+                    // Set preamp from preset (for headroom compensation)
+                    let preamp_db = eq_preset.preamp as f64;
+                    let linear_gain = 10.0_f32.powf(preamp_db as f32 / 20.0);
+                    crate::audio::dsp::eqpreamp::get_preamp_gain_arc()
+                        .store(linear_gain.to_bits(), std::sync::atomic::Ordering::Relaxed);
+                    self.preamp_value = preamp_db;
+                    self.preamp_changed();
                     for (i, &gain) in eq_preset.gains.iter().enumerate() {
                         self.eq_bands_internal[i] = gain;
                         let arc = crate::audio::dsp::eq::get_eq_bands_arc();
@@ -820,6 +837,13 @@ impl DspController {
             }
             PresetSource::User(idx) => {
                 self.fader_offset = self.user_eq_macro[idx] as f64;
+                // User presets default to 0 dB preamp
+                let preamp_db = 0.0f64;
+                let linear_gain = 10.0_f32.powf(preamp_db as f32 / 20.0);
+                crate::audio::dsp::eqpreamp::get_preamp_gain_arc()
+                    .store(linear_gain.to_bits(), std::sync::atomic::Ordering::Relaxed);
+                self.preamp_value = preamp_db;
+                self.preamp_changed();
                 for i in 0..10 {
                     let gain = self.user_eq_gains[idx][i];
                     self.eq_bands_internal[i] = gain;
@@ -910,13 +934,14 @@ impl DspController {
         self.crystal_freq_changed();
 
         self.surround_active = preset.surround_enabled || preset.surround_width > 0.0;
-        self.surround_width = preset.surround_width.clamp(0.0, 1.0) as f64;
+        // UI: 1.0-2.0, Engine: same (1.0=bypass, 2.0=wide)
+        self.surround_width = preset.surround_width.clamp(1.0, 2.0) as f64;
         crate::audio::dsp::surround::get_surround_enabled_arc().store(
             preset.surround_enabled,
             std::sync::atomic::Ordering::Relaxed,
         );
         crate::audio::dsp::surround::get_surround_width_arc().store(
-            preset.surround_width.clamp(0.0, 1.0).to_bits(),
+            preset.surround_width.clamp(1.0, 2.0).to_bits(),
             std::sync::atomic::Ordering::Relaxed,
         );
         self.surround_active_changed();
@@ -1088,6 +1113,7 @@ impl DspController {
             self.user_fx_surround_enabled[idx],
             std::sync::atomic::Ordering::Relaxed,
         );
+        // UI: 1.0-2.0, Engine: same (1.0=bypass, 2.0=wide)
         crate::audio::dsp::surround::get_surround_width_arc().store(
             self.user_fx_surround_width[idx].to_bits(),
             std::sync::atomic::Ordering::Relaxed,
@@ -1375,14 +1401,16 @@ impl DspController {
         self.surround_active = !self.surround_active;
         crate::audio::dsp::surround::get_surround_enabled_arc()
             .store(self.surround_active, std::sync::atomic::Ordering::Relaxed);
+        // Toggle ONLY does ON/OFF - no width update!
         self.surround_active_changed();
     }
 
     pub fn set_surround_width(&mut self, val: f64) {
-        let actual_width = val * 2.0;
-        self.surround_width = actual_width;
+        // UI slider: 1.0-2.0 (bypass→wide), same as engine
+        self.surround_width = val;
+        // Store DIRECTLY to atomic - no conversion needed!
         crate::audio::dsp::surround::get_surround_width_arc().store(
-            (actual_width as f32).to_bits(),
+            (val as f32).to_bits(),
             std::sync::atomic::Ordering::Relaxed,
         );
         self.surround_width_changed();
@@ -1630,7 +1658,7 @@ impl DspController {
             self.surround_width = snap.surround_width as f64;
         } else {
             self.surround_active = false;
-            self.surround_width = 1.8;
+            self.surround_width = 1.0; // UI: 1.0 = bypass
         }
         crate::audio::dsp::surround::get_surround_enabled_arc()
             .store(self.surround_active, std::sync::atomic::Ordering::Relaxed);

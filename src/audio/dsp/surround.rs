@@ -15,11 +15,11 @@ pub fn get_surround_enabled_arc() -> &'static AtomicBool {
 }
 
 pub fn get_surround_width_arc() -> &'static AtomicU32 {
-    SURROUND_WIDTH.get_or_init(|| AtomicU32::new(1.0_f32.to_bits()))
+    SURROUND_WIDTH.get_or_init(|| AtomicU32::new((1.0_f32).to_bits()))
 }
 
 pub fn get_surround_bass_safe_arc() -> &'static AtomicU32 {
-    SURROUND_BASS_SAFE.get_or_init(|| AtomicU32::new(1.0_f32.to_bits()))
+    SURROUND_BASS_SAFE.get_or_init(|| AtomicU32::new((1.0_f32).to_bits()))
 }
 
 pub fn get_surround_magic_mode_arc() -> &'static AtomicBool {
@@ -32,24 +32,18 @@ fn bits_to_f32(bits: u32) -> f32 {
 
 pub struct SurroundProcessor {
     current_width: f32,
-    target_width: f32,
-
     hp_prev_in: f32,
     hp_prev_out: f32,
     hp_coeff: f32,
-
-    smoothing_coeff: f32,
 }
 
 impl SurroundProcessor {
     pub fn new() -> Self {
         Self {
             current_width: 1.0,
-            target_width: 1.0,
             hp_prev_in: 0.0,
             hp_prev_out: 0.0,
             hp_coeff: 0.0,
-            smoothing_coeff: 0.0,
         }
     }
 
@@ -58,11 +52,6 @@ impl SurroundProcessor {
         self.hp_prev_in = sample;
         self.hp_prev_out = out;
         out
-    }
-
-    fn smooth_width(&mut self) {
-        self.current_width = self.current_width * self.smoothing_coeff
-            + self.target_width * (1.0 - self.smoothing_coeff);
     }
 }
 
@@ -80,25 +69,23 @@ impl DspProcessor for SurroundProcessor {
             return;
         }
 
-        // Check if sample rate changed
-        let rate_changed = samplerate::consume_rate_changed();
-        if rate_changed {
-            let rate = samplerate::get_rate();
-            if rate > 0.0 {
-                // Bass protection cutoff (preserve drum thump - 60Hz allows fundamental bass frequencies)
-                let hp_cutoff = 60.0;
-                let rc = 1.0 / (2.0 * std::f32::consts::PI * hp_cutoff);
-                let dt = 1.0 / rate;
-                self.hp_coeff = rc / (rc + dt);
+        // Get current rate directly
+        let current_rate = samplerate::get_rate();
 
-                // 5ms smoothing
-                let smoothing_time = 0.005;
-                self.smoothing_coeff = (-1.0 / (rate * smoothing_time)).exp();
-            }
+        // Hitung hp_coeff hanya jika rate valid (> 0.0)
+        // Dan hanya jika rate berubah ATAU coeff belum pernah dihitung (0.0)
+        if current_rate > 0.0 && (samplerate::consume_rate_changed() || self.hp_coeff == 0.0) {
+            // Bass protection cutoff (preserve drum thump - 60Hz allows fundamental bass frequencies)
+            let hp_cutoff = 60.0;
+            let rc = 1.0 / (2.0 * std::f32::consts::PI * hp_cutoff);
+            let dt = 1.0 / current_rate;
+            self.hp_coeff = rc / (rc + dt);
         }
 
-        // Soft-limit width supaya tidak brutal
-        self.target_width = raw_width.clamp(0.0, 1.5);
+        // Update width once per buffer (not per sample!)
+        if (raw_width - self.current_width).abs() > 0.01 {
+            self.current_width = raw_width;
+        }
 
         let len = input.len();
 
@@ -108,33 +95,28 @@ impl DspProcessor for SurroundProcessor {
                 break;
             }
 
-            self.smooth_width();
-
             let left = input[i];
             let right = input[i + 1];
 
-            let mid = (left + right) * 0.5;
-            let mut side = (left - right) * 0.5;
+            // 1. Get difference (Side signal)
+            let mut side = left - right;
 
-            // Bass-safe high pass on side
-            if bass_safe > 0.5 {
+            // 2. Bass-safe: Filter side only to preserve bass in center
+            // Only apply if hp_coeff was calculated (valid)
+            if bass_safe > 0.5 && self.hp_coeff > 0.0 {
                 side = self.high_pass(side);
             }
 
-            // Controlled widening (lebih natural)
-            let widened_side = side * self.current_width;
+            // 3. Calculate Injection Gain (Range 1.0 - 2.0)
+            // If current_width = 1.0, then injection_gain = 0.0 (Bypass!)
+            // If current_width = 2.0, then injection_gain = 0.5 (Max wide)
+            let injection_gain = (self.current_width - 1.0) * 0.5;
 
-            let mut l = mid + widened_side;
-            let mut r = mid - widened_side;
+            // 4. SIDE INJECTION (Original signals untouched!)
+            let l = left + (side * injection_gain);
+            let r = right - (side * injection_gain);
 
-            // RMS-style normalization (lebih smooth dari norm sederhana)
-            let energy = (l * l + r * r).sqrt();
-            if energy > 1.0 {
-                let inv = 1.0 / energy;
-                l *= inv;
-                r *= inv;
-            }
-
+            // 5. Hard clamp as safety net
             output[i] = l.clamp(-1.0, 1.0);
             output[i + 1] = r.clamp(-1.0, 1.0);
         }

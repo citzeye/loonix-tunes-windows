@@ -136,7 +136,7 @@ impl DspProcessor for AudioNormalizer {
 // Should rarely engage if scanner peak constraint works correctly.
 #[inline(always)]
 fn soft_clip(sample: f32) -> f32 {
-    let threshold = 0.95;
+    let threshold = 0.99;
     let abs_s = sample.abs();
     if abs_s <= threshold {
         sample // Bit-perfect transparency for transients

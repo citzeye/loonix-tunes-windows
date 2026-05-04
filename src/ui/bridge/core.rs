@@ -706,9 +706,22 @@ impl MusicModel {
     }
 
     pub fn toggle_shuffle(&mut self) {
+        let folder_scope: Option<String> = {
+            let tab_root = self.current_tab_root.to_string();
+            if !tab_root.is_empty() {
+                // Tab Custom: stay dalam folder tsb
+                Some(tab_root)
+            } else if self.expanded_folders.is_empty() {
+                // Tab Music + TIDAK ada folder di-expand: shuffle cm lagu di root (bukan di folder)
+                Some(String::new()) // empty string means root only
+            } else {
+                // Tab Music + ada folder yang di-expand, use yang pertama
+                self.expanded_folders.iter().next().cloned()
+            }
+        };
+        let folder_scope_ref: Option<&str> = folder_scope.as_deref();
         self.playback
-            .toggle_shuffle(&self.display_list, self.current_index, None);
-        // Langsung tembak ke property QML (self.shuffle) ngambil dari playback
+            .toggle_shuffle(&self.display_list, self.current_index, folder_scope_ref);
         self.shuffle = self.playback.shuffle_active;
         self.shuffle_changed();
     }

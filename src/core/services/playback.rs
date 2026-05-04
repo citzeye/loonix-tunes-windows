@@ -160,57 +160,65 @@ impl PlaybackController {
     }
 
     pub fn toggle_shuffle(&mut self, display_list: &[MusicItem], current_idx: i32, folder_scope: Option<&str>) {
-        self.shuffle_active = !self.shuffle_active;
-
-        if self.shuffle_active && !display_list.is_empty() {
-            self.shuffle_scope_folder = folder_scope.map(|s| s.to_string());
-
-            let indices: Vec<i32> = if let Some(scope) = &self.shuffle_scope_folder {
+        // First, determine what indices would be included
+        let indices: Vec<i32> = if let Some(scope) = folder_scope {
+            if scope.is_empty() {
+                display_list
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, item)| !item.is_folder && item.parent_folder.is_none())
+                    .map(|(i, _)| i as i32)
+                    .collect()
+            } else {
                 display_list
                     .iter()
                     .enumerate()
                     .filter(|(_, item)| {
-                        // Only include non-folder items that belong to the scope folder
                         !item.is_folder && item.parent_folder.as_deref() == Some(scope)
                     })
                     .map(|(i, _)| i as i32)
                     .collect()
-            } else {
-                (0..display_list.len() as i32).collect()
-            };
-
-            if indices.is_empty() {
-                self.shuffle_active = false;
-                return;
             }
+        } else {
+            (0..display_list.len() as i32).collect()
+        };
 
-            let total = indices.len();
-            let mut indices: Vec<i32> = indices;
-
-            // Fisher-Yates with better seed (LCG)
-            use std::time::{SystemTime, UNIX_EPOCH};
-            let mut seed = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_nanos() as usize;
-
-            for i in (1..total).rev() {
-                seed = seed.wrapping_mul(1103515245).wrapping_add(12345);
-                let j = (seed % (i + 1)) as usize;
-                indices.swap(i, j);
-            }
-
-            // FIX: Put current song at front of shuffle queue
-            if current_idx >= 0 {
-                if let Some(pos) = indices.iter().position(|&x| x == current_idx) {
-                    indices.remove(pos);
-                    indices.insert(0, current_idx);
-                }
-            }
-
-            self.shuffle_queue = indices;
-            self.queue_index = 0;
+        // If no valid items to shuffle, toggle OFF and exit
+        if indices.is_empty() {
+            self.shuffle_active = false;
+            return;
         }
+
+        // Only now toggle ON
+        self.shuffle_active = !self.shuffle_active;
+        self.shuffle_scope_folder = folder_scope.map(|s| s.to_string());
+
+        let total = indices.len();
+        let mut indices: Vec<i32> = indices;
+
+        // Fisher-Yates with better seed (LCG)
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let mut seed = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos() as usize;
+
+        for i in (1..total).rev() {
+            seed = seed.wrapping_mul(1103515245).wrapping_add(12345);
+            let j = (seed % (i + 1)) as usize;
+            indices.swap(i, j);
+        }
+
+        // FIX: Put current song at front of shuffle queue
+        if current_idx >= 0 {
+            if let Some(pos) = indices.iter().position(|&x| x == current_idx) {
+                indices.remove(pos);
+                indices.insert(0, current_idx);
+            }
+        }
+
+        self.shuffle_queue = indices;
+        self.queue_index = 0;
     }
 
     pub fn toggle_repeat(&mut self) {

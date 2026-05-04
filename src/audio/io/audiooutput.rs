@@ -522,12 +522,7 @@ impl AudioOutput {
         let supported_config = device
             .default_output_config()
             .map_err(|e| format!("Failed to get default output config: {}", e))?;
-        // Debug: print device sample format as reported by CPAL/WASAPI/etc.
-        let sample_format = {
-            let fmt = supported_config.sample_format();
-            println!("{:?}", fmt);
-            fmt
-        };
+        let sample_format = supported_config.sample_format();
         // Capture the device's actual rate for possible use by the decoder
         let device_rate = supported_config.sample_rate().0;
         // Expose device_rate to downstream components (decoder) if needed.

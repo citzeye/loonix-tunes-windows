@@ -40,38 +40,38 @@ pub struct FxPreset {
 pub const EQ_PRESETS: [EqPreset; 6] = [
     EqPreset {
         name: "LOONIX",
-        gains: [4.0, 8.0, -4.0, -8.0, -2.0, 0.0, -2.0, -2.0, 8.0, 4.0],
-        preamp: 0.0,
+        gains: [0.0, 8.0, -8.0, -8.0, -8.0, -4.0, -4.0, -4.0, 4.0, -4.0],
+        preamp: -6.0,
         macro_val: 0.0,
     },
     EqPreset {
         name: "BASS",
         gains: [6.0, 9.0, 0.0, -5.0, -5.0, -5.0, -5.0, -5.0, 2.0, -5.0],
-        preamp: 0.0,
+        preamp: -9.0,
         macro_val: 0.0,
     },
     EqPreset {
         name: "ROCK",
         gains: [6.0, 9.0, 1.0, -2.0, -4.0, -2.0, 1.0, 3.0, 6.0, 6.0],
-        preamp: 0.0,
+        preamp: -9.0,
         macro_val: 0.0,
     },
     EqPreset {
         name: "POP",
         gains: [-2.0, -1.0, 0.0, 2.0, 4.0, 0.0, 2.0, 0.0, -1.0, -2.0],
-        preamp: 0.0,
+        preamp: -4.0,
         macro_val: 0.0,
     },
     EqPreset {
         name: "METAL",
         gains: [6.0, 10.0, 0.0, -4.0, -6.0, -4.0, 0.0, 3.0, 5.0, 6.0],
-        preamp: 0.0,
+        preamp: -10.0,
         macro_val: 0.0,
     },
     EqPreset {
         name: "JAZZ",
         gains: [3.0, 2.0, 1.0, -2.0, -2.0, -2.0, -2.0, 1.0, 2.0, 3.0],
-        preamp: 0.0,
+        preamp: -3.0,
         macro_val: 0.0,
     },
 ];
@@ -80,14 +80,14 @@ pub const FX_PRESETS: [FxPreset; 6] = [
     FxPreset {
         name: "LOONIX",
         bass_enabled: true,
-        bass_gain: 9.0,
+        bass_gain: 7.0,
         bass_cutoff: 180.0,
-        bass_mode: 2,
+        bass_mode: 1,
         crystal_enabled: true,
         crystal_amount: 0.5,
         crystal_freq: 4000.0,
         surround_enabled: true,
-        surround_width: 0.75,
+        surround_width: 1.75,  // wide
         mono_enabled: false,
         mono_width: 0.0,
         pitch_enabled: false,
@@ -114,7 +114,7 @@ pub const FX_PRESETS: [FxPreset; 6] = [
         crystal_amount: 0.2,
         crystal_freq: 8000.0,
         surround_enabled: false,
-        surround_width: 0.9,
+        surround_width: 1.9,  // very wide
         mono_enabled: false,
         mono_width: 0.0,
         pitch_enabled: false,
@@ -141,7 +141,7 @@ pub const FX_PRESETS: [FxPreset; 6] = [
         crystal_amount: 0.4,
         crystal_freq: 6000.0,
         surround_enabled: true,
-        surround_width: 0.65,
+        surround_width: 1.65,  // wide
         mono_enabled: false,
         mono_width: 0.0,
         pitch_enabled: false,
@@ -168,7 +168,7 @@ pub const FX_PRESETS: [FxPreset; 6] = [
         crystal_amount: 0.6,
         crystal_freq: 6000.0,
         surround_enabled: true,
-        surround_width: 0.7,
+        surround_width: 1.5,  // medium wide
         mono_enabled: false,
         mono_width: 0.0,
         pitch_enabled: false,
@@ -195,7 +195,7 @@ pub const FX_PRESETS: [FxPreset; 6] = [
         crystal_amount: 0.2,
         crystal_freq: 4000.0,
         surround_enabled: false,
-        surround_width: 0.5,
+        surround_width: 1.8,  // very wide
         mono_enabled: false,
         mono_width: 0.0,
         pitch_enabled: false,
@@ -222,7 +222,7 @@ pub const FX_PRESETS: [FxPreset; 6] = [
         crystal_amount: 0.3,
         crystal_freq: 4000.0,
         surround_enabled: true,
-        surround_width: 0.6,
+        surround_width: 1.6,  // wide
         mono_enabled: false,
         mono_width: 0.0,
         pitch_enabled: false,
@@ -242,19 +242,11 @@ pub const FX_PRESETS: [FxPreset; 6] = [
 ];
 
 pub fn get_eq_preset(index: usize) -> Option<&'static EqPreset> {
-    if index < EQ_PRESETS.len() {
-        Some(&EQ_PRESETS[index])
-    } else {
-        None
-    }
+    if index < EQ_PRESETS.len() { Some(&EQ_PRESETS[index]) } else { None }
 }
 
 pub fn get_fx_preset(index: usize) -> Option<&'static FxPreset> {
-    if index < FX_PRESETS.len() {
-        Some(&FX_PRESETS[index])
-    } else {
-        None
-    }
+    if index < FX_PRESETS.len() { Some(&FX_PRESETS[index]) } else { None }
 }
 
 pub struct Presets;

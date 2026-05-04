@@ -22,7 +22,7 @@ fn bits_to_f32(bits: u32) -> f32 {
 /// Safety clipper to prevent overshoot after preamp gain.
 #[inline(always)]
 fn soft_clip(sample: f32) -> f32 {
-    let threshold = 0.95;
+    let threshold = 0.99;
     let abs_s = sample.abs();
     if abs_s <= threshold {
         sample // Bit-perfect transparency for transients

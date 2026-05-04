@@ -72,30 +72,31 @@ Rectangle {
         delegate: Component {
             id: playlistDelegate
             Rectangle {
-                width: playlistView.width
+                width: ListView.view.width
                 height: 26
                 color: 'transparent'
+                
                 property bool isPlayingNow: !model.is_folder && model.name === musicModel.current_title
                 property bool isHovered: false
-                property bool hasParentFolder: !!model.parent_folder && model.parent_folder !== ''
+                
+                // Logic indentasi yang bener: dihitung dari awal
+                property int folderIndent: (model.parent_folder !== undefined && model.parent_folder !== "") ? 15 : 0
 
-                // Indentasi - 15px kalau ada parent_folder
-                anchors.leftMargin: hasParentFolder ? 15 : 0
-                anchors.rightMargin: 6
-
-                // Left Border - menunjukkan hierarchy folder
+                // Left Border - Garis vertikal abu-abu tipis menyabung dari atas ke bawah
                 Rectangle {
-                    width: 2
-                    height: 20
-                    visible: hasParentFolder
                     anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: theme.colormap.playlistfolder
+                    anchors.leftMargin: folderIndent
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: 1
+                    color: theme.colormap.graysolid
+                    visible: folderIndent > 0
                 }
 
                 Text {
                     id: playlistIcon
                     anchors.left: parent.left
+                    anchors.leftMargin: folderIndent
                     anchors.verticalCenter: parent.verticalCenter
                     text: isPlayingNow ? '󰶻' : model.is_folder ? '󱍙' : '󰽷'
                     font.family: symbols.name
@@ -118,7 +119,7 @@ Rectangle {
                     anchors.left: playlistIcon.right
                     leftPadding: 6
                     anchors.right: parent.right
-                    anchors.rightMargin: 4
+                    anchors.rightMargin: 6
                     anchors.verticalCenter: parent.verticalCenter
                 }
 
@@ -145,12 +146,14 @@ Rectangle {
                             root.playlistContextItemName = String(model.name || "")
                             root.playlistContextItemPath = String(model.path || "")
                             root.playlistContextIsFolder = Boolean(model.is_folder)
+                            
                             var menuHeight = 170
                             var menuWidth = 170
                             var bottomPos = parent.mapToItem(null, 0, parent.height)
                             var topPos = parent.mapToItem(null, 0, 0)
                             var spaceBelow = root.height - bottomPos.y
                             var spaceAbove = topPos.y
+                            
                             if (spaceBelow >= menuHeight) {
                                 root.playlistContextMenuY = bottomPos.y | 0
                             } else if (spaceAbove >= menuHeight) {
@@ -158,6 +161,7 @@ Rectangle {
                             } else {
                                 root.playlistContextMenuY = bottomPos.y | 0
                             }
+                            
                             if (bottomPos.x + menuWidth > root.width) {
                                 root.playlistContextMenuX = (root.width - menuWidth) | 0
                             } else {
