@@ -799,29 +799,33 @@ impl MusicModel {
     // ==========================================
     pub fn update_tick(&mut self) {
         self.tick_counter += 1;
-        let should_next = if let Ok(mut ff) = self.ffmpeg.lock() {
+
+        let (should_next, pos, dur) = if let Ok(mut ff) = self.ffmpeg.lock() {
             ff.update_tick();
             let pos = (ff.get_position() * 1000.0) as i32;
-            if pos != self.position {
-                self.position = pos;
-                self.position_changed();
-            }
             let dur = (ff.get_duration() * 1000.0) as i32;
-            if dur != self.duration {
-                self.duration = dur;
-                self.duration_changed();
-            }
-            ff.take_finished()
+            let finished = ff.take_finished();
+            (finished, pos, dur)
         } else {
-            false
+            (false, 0, 0)
         };
+
+        // Callbacks outside lock
+        if pos != self.position {
+            self.position = pos;
+            self.position_changed();
+        }
+        if dur != self.duration {
+            self.duration = dur;
+            self.duration_changed();
+        }
+
         if should_next {
             self.play_next();
         }
         if self.tick_counter % 100 == 0 {
             self.save_state();
         }
-        // Sync ABLoop state every tick to ensure UI is always updated
         self.sync_abloop();
     }
 
