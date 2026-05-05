@@ -422,7 +422,7 @@ impl MusicModel {
     pub fn rename_folder(&mut self, index: i32, new_name: String) {
         if index >= 0 && (index as usize) < self.library.custom_folders.len() {
             let mut trimmed = new_name.trim().to_string();
-            trimmed.truncate(15);
+            trimmed.truncate(16);
             if !trimmed.is_empty() {
                 self.library.custom_folders[index as usize].0 = trimmed;
                 self.custom_folders_changed();

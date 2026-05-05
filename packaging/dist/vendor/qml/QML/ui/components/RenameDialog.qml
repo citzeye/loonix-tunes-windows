@@ -40,19 +40,18 @@ Loader {
                         id: renameInput
                         Layout.fillWidth: true
                         Layout.preferredHeight: 28
-                        text: musicModel.get_current_rename_name(root.renameDialogIndex)
                         font.family: kodeMono.name
                         font.pixelSize: 12
                         color: theme.colormap.playeraccent
                         verticalAlignment: Text.AlignVCenter
-                        maximumLength: 10
+                        maximumLength: 16
                         activeFocusOnPress: true
                         selectByMouse: true
-
-                        onAccepted: {
-                            if (text.trim().length > 0) {
-                                musicModel.rename_folder(root.renameDialogIndex, text.trim())
-                            }
+                        Component.onCompleted: {
+                            text = musicModel.get_current_rename_name(root.renameDialogIndex)
+                            forceActiveFocus()
+                            selectAll()
+                        }
                             root.renameDialogVisible = false
                         }
                         Component.onCompleted: {

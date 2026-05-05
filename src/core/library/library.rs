@@ -50,7 +50,14 @@ impl Library {
     pub fn add_folder(&mut self, path: String) {
         let name = Path::new(&path)
             .file_name()
-            .map(|n| n.to_string_lossy().to_string())
+            .map(|n| {
+                let s = n.to_string_lossy().to_string();
+                if s.len() > 16 {
+                    s[..16].to_string()
+                } else {
+                    s
+                }
+            })
             .unwrap_or_else(|| path.clone());
         self.custom_folders.push((name, path));
         self.custom_folder_count = self.custom_folders.len();
