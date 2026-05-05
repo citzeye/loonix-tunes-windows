@@ -31,6 +31,11 @@ Item {
         function onColormapChanged() {
             refreshTicker++
         }
+        function onCustom_themes_changed() {
+            // Fetch fresh data from Rust, not stale cached data
+            customThemeRepeater.model = null
+            customThemeRepeater.model = theme.get_custom_themes()
+        }
     }
 
     Flickable {
@@ -123,22 +128,21 @@ Item {
 
                     delegate: Rectangle {
                         property int presetIndex: modelData.original_index
-                        property string presetName: modelData.name
 
                         Layout.preferredWidth: 200
                         Layout.preferredHeight: 32
-                        Layout.alignment: Qt.AlignHCenter 
+                        Layout.alignment: Qt.AlignHCenter
                         radius: 4
-                        color: presetName === theme.current_theme ? theme.colormap["playeraccent"] : theme.colormap["bgoverlay"]
+                        color: modelData.name === theme.current_theme ? theme.colormap["playeraccent"] : theme.colormap["bgoverlay"]
                         border.color: {
                              if (prefPage.appearanceMenuVisible && prefPage.appearanceMenuIndex === presetIndex) {
-                                return theme.colormap["playeraccent"]
-                            }
-                            if (customItemArea.containsMouse) {
-                                return theme.colormap["playeraccent"]
-                            }
-                            return theme.colormap["graysolid"]
-                        }
+                                 return theme.colormap["playeraccent"]
+                             }
+                             if (customItemArea.containsMouse) {
+                                 return theme.colormap["playeraccent"]
+                             }
+                             return theme.colormap["graysolid"]
+                         }
                         border.width: (prefPage.appearanceMenuVisible && prefPage.appearanceMenuIndex === presetIndex) ? 2 : 1
 
                         Behavior on color { ColorAnimation { duration: 150 } }
@@ -146,11 +150,11 @@ Item {
 
                         Text {
                             anchors.centerIn: parent
-                            text: presetName
+                            text: modelData.name
                             font.family: kodeMono.name
                             font.pixelSize: 12
-                            color: presetName === theme.current_theme ? theme.colormap["bgmain"] : theme.colormap["playlisttext"]
-                            font.bold: presetName === theme.current_theme
+                            color: modelData.name === theme.current_theme ? theme.colormap["bgmain"] : theme.colormap["playlisttext"]
+                            font.bold: modelData.name === theme.current_theme
                         }
 
                         MouseArea {
@@ -169,7 +173,7 @@ Item {
                                     prefPage.openAppearanceMenu(p.x, p.y, presetIndex)
                                 } else if (mouse.button === Qt.LeftButton) {
                                     prefPage.closeAppearanceMenu()
-                                    theme.set_theme(presetName)
+                                    theme.set_theme(modelData.name)
                                 }
                             }
                         }

@@ -59,20 +59,23 @@ Item {
             "playlisticon": inPlaylistIcon.inputText,
             "dspbg": inEqBg.inputText,
             "dspborder": inEqBorder.inputText,
+            "dspeqbg": inEqBg.inputText,
             "dspeqtext": inEqText.inputText,
             "dspeqsubtext": inEqText.inputText,
             "dspeqicon": inEqIcon.inputText,
             "dspeqhover": inEqHover.inputText,
             "dspeqpresettext": inEqText.inputText,
             "dspeqpresetactive": inEqPresetActive.inputText,
-            "dspeqslider": inEq10Slider.inputText,
-            "dspeqsliderbg": inEq10Slider.inputText,
-            "dspeqhandle": inEq10Handle.inputText,
+            "dspeqslider": inEqSlider.inputText,
+            "dspeqsliderbg": inEqSlider.inputText,
+            "dspeqhandle": inEqHandle.inputText,
             "dspeqfaderslider": inEqFaderSlider.inputText,
             "dspeqfaderhandle": inEqFaderSlider.inputText,
             "dspeqmixslider": inEqFaderSlider.inputText,
             "dspeqmixhandle": inEqFaderSlider.inputText,
+            "dspeqmixbg": inEqFaderSlider.inputText,
             "dspfxbg": inFxBg.inputText,
+            "dspfxborder": inEqBorder.inputText,
             "dspfxtext": inFxText.inputText,
             "dspfxsubtext": inFxText.inputText,
             "dspfxicon": inFxIcon.inputText,
@@ -81,12 +84,12 @@ Item {
             "dspfxslider": inFxSlider.inputText,
             "dspfxsliderbg": inFxSliderBg.inputText,
             "dspfxhandle": inFxHandle.inputText,
-            "dspslider": inEq10Slider.inputText,
+            "dspslider": inEqSlider.inputText,
             "dspsliderbg": inEqBg.inputText,
-            "dsphandle": inEq10Handle.inputText,
-            "dsp10slider": inEq10Slider.inputText,
-            "dsp10handle": inEq10Handle.inputText,
-            "dsp10bg": inEqBg.inputText,
+            "dsphandle": inEqHandle.inputText,
+            "dsp10slider": inDsp10Slider.inputText,
+            "dsp10handle": inDsp10Handle.inputText,
+            "dsp10bg": inDsp10Bg.inputText,
             "dspfaderslider": inEqFaderSlider.inputText,
             "dspfaderhandle": inEqFaderSlider.inputText,
             "dspfaderbg": inEqBg.inputText,
@@ -147,6 +150,9 @@ Item {
                 inFxSlider.inputText = savedColors.dspfxslider;
                 inFxSliderBg.inputText = savedColors.dspfxsliderbg;
                 inFxHandle.inputText = savedColors.dsphandle;
+                inDsp10Bg.inputText = savedColors.dsp10bg;
+                inDsp10Slider.inputText = savedColors.dsp10slider;
+                inDsp10Handle.inputText = savedColors.dsp10handle;
             } else {
                 inBgMain.inputText = theme.colormap.bgmain;
                 inBgOverlay.inputText = theme.colormap.bgoverlay;
@@ -185,6 +191,9 @@ Item {
                 inFxSlider.inputText = theme.colormap.dspfxslider;
                 inFxSliderBg.inputText = theme.colormap.dspfxsliderbg;
                 inFxHandle.inputText = theme.colormap.dspfxhandle;
+                inDsp10Bg.inputText = theme.colormap.dsp10bg;
+                inDsp10Slider.inputText = theme.colormap.dsp10slider;
+                inDsp10Handle.inputText = theme.colormap.dsp10handle;
             }
         } else {
             root.prefThemeEditorProfileTarget = -1;
@@ -305,24 +314,43 @@ Item {
                             font.family: kodeMono.name
                             font.pixelSize: 10
                         }
-                        Repeater {
-                            model: theme.get_custom_themes()
-                            delegate: RadioButton {
-                                text: modelData.name
-                                checked: prefThemeEditorRoot.selectedProfileIndex === modelData.original_index
-                                onClicked: {
-                                    prefThemeEditorRoot.selectedProfileIndex = modelData.original_index;
-                                }
-                                contentItem: Text {
-                                    text: parent.text
-                                    color: theme.colormap.tabtext
-                                    font.family: kodeMono.name
-                                    font.pixelSize: 11
-                                    leftPadding: 24
-                                    verticalAlignment: Text.AlignVCenter
+                    Repeater {
+                        model: theme.get_custom_themes()
+                        delegate: RadioButton {
+                            id: radioBtn
+                            text: modelData.name
+                            checked: prefThemeEditorRoot.selectedProfileIndex === modelData.original_index
+                            onClicked: {
+                                prefThemeEditorRoot.selectedProfileIndex = modelData.original_index;
+                            }
+                            indicator: Rectangle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                implicitWidth: 16
+                                implicitHeight: 16
+                                radius: 8
+                                border.color: radioBtn.checked ? theme.colormap.playeraccent : theme.colormap.graysolid
+                                border.width: 1
+                                color: "transparent"
+                                
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    width: 8
+                                    height: 8
+                                    radius: 4
+                                    color: theme.colormap.playeraccent
+                                    visible: radioBtn.checked
                                 }
                             }
+                            contentItem: Text {
+                                text: radioBtn.text
+                                color: theme.colormap.tabtext
+                                font.family: kodeMono.name
+                                font.pixelSize: 11
+                                leftPadding: radioBtn.indicator.width + 8
+                                verticalAlignment: Text.AlignVCenter
+                            }
                         }
+                    }
                     }
 
                     Rectangle {
@@ -540,6 +568,25 @@ Item {
                         labelText: "dspfxhandle"
                         hexValue: theme.colormap.dspfxhandle
                     }
+
+                    SectionHeader {
+                        sectionTitle: "DSP 10-BAND"
+                    }
+                    ColorInputRow {
+                        id: inDsp10Bg
+                        labelText: "dsp10bg"
+                        hexValue: theme.colormap.dsp10bg
+                    }
+                    ColorInputRow {
+                        id: inDsp10Slider
+                        labelText: "dsp10slider"
+                        hexValue: theme.colormap.dsp10slider
+                    }
+                    ColorInputRow {
+                        id: inDsp10Handle
+                        labelText: "dsp10handle"
+                        hexValue: theme.colormap.dsp10handle
+                    }
                 }
             }
 
@@ -592,14 +639,17 @@ Item {
                     }
                 }
                 Rectangle {
+                    id: saveButton
                     Layout.fillWidth: true
                     Layout.preferredHeight: 28
                     radius: 4
                     color: theme.colormap.playeraccent
                     border.width: 1
+                    property bool justSaved: false
+
                     Text {
                         anchors.centerIn: parent
-                        text: "SAVE"
+                        text: saveButton.justSaved ? "SAVED" : "SAVE"
                         color: theme.colormap.bgmain
                         font.family: kodeMono.name
                         font.pixelSize: 11
@@ -613,9 +663,16 @@ Item {
                             theme.set_custom_theme_name(idx, newName);
                             theme.set_custom_theme_colors(idx, scanCurrentEditorColors());
                             theme.set_theme(newName);
-                            root.prefThemeEditorVisible = false;
+                            saveButton.justSaved = true;
+                            saveResetTimer.restart();
                         }
                     }
+                }
+
+                Timer {
+                    id: saveResetTimer
+                    interval: 1500
+                    onTriggered: saveButton.justSaved = false
                 }
             }
         }

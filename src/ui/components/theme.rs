@@ -295,6 +295,7 @@ pub struct ThemeManager {
         NOTIFY current_theme_changed
     },
     pub current_theme_changed: qt_signal!(),
+    pub custom_themes_changed: qt_signal!(),
     pub get_custom_theme_count: qt_method!(fn(&self) -> i32),
     pub get_custom_theme_name: qt_method!(fn(&self, index: i32) -> QString),
     pub set_custom_theme_name: qt_method!(fn(&mut self, index: i32, name: String)),
@@ -365,6 +366,7 @@ impl ThemeManager {
 
             self.themes[index as usize].name = name.clone();
             self.save_config();
+            self.custom_themes_changed();
 
             // Smart Apply: Refresh UI if renaming the active theme
             if is_current_theme {
@@ -408,6 +410,7 @@ impl ThemeManager {
         if idx < self.themes.len() {
             self.themes[idx].colors = Some(color_map);
             self.save_config();
+            self.custom_themes_changed();
 
             let theme_name = self.themes[idx].name.clone();
             self.set_theme(theme_name);
@@ -434,6 +437,7 @@ impl ThemeManager {
             self.themes[idx].name = name.clone();
             self.themes[idx].colors = Some(color_map);
             self.save_config();
+            self.custom_themes_changed();
 
             self.set_theme(name);
         }
@@ -498,6 +502,7 @@ impl ThemeManager {
 
     pub fn initialize_default_theme(&mut self) {
         self.save_config();
+        self.custom_themes_changed();
     }
 
     pub fn get_editor_starter_colors(&self, is_edit_mode: bool, index: i32) -> QVariantMap {
@@ -549,7 +554,12 @@ impl ThemeManager {
     }
 
     pub fn cycle_theme(&mut self) {
-        let themes = Self::available_themes();
+        // Build theme list from self.themes (includes built-in + custom)
+        let themes: Vec<String> = self.themes
+            .iter()
+            .map(|t| t.name.clone())
+            .collect();
+        
         let current = self.current_theme.to_string();
         if let Some(idx) = themes.iter().position(|t| t == &current) {
             let next_idx = (idx + 1) % themes.len();
@@ -707,7 +717,7 @@ impl ThemeManager {
                     // --- Playlist Section ---
                     "playlisttext", "#d1d8e6",
                     "playlistfolder", "#f5a623",
-                    "playlistactive", "#90f33f",
+                    "playlistactive", "#ff1ae0",
                     "playlisticon", "#843ff3",
 
                     // --- DSP Section ---

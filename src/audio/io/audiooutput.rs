@@ -255,7 +255,7 @@ impl AudioOutput {
     }
 
     pub fn is_buffer_empty(&self) -> bool {
-        if let Ok(cons) = self.consumer.lock() {
+        if let Ok(cons) = self.consumer.try_lock() {
             if let Some(ref c) = *cons {
                 return c.is_empty();
             }
@@ -272,7 +272,7 @@ impl AudioOutput {
     }
 
     pub fn get_buffer_len(&self) -> usize {
-        if let Ok(cons) = self.consumer.lock() {
+        if let Ok(cons) = self.consumer.try_lock() {
             if let Some(ref c) = *cons {
                 if !c.is_empty() {
                     return self.ring_buffer_capacity;
@@ -284,7 +284,7 @@ impl AudioOutput {
     }
 
     pub fn is_ring_buffer_ready(&self) -> bool {
-        if let Ok(cons) = self.consumer.lock() {
+        if let Ok(cons) = self.consumer.try_lock() {
             if let Some(ref c) = *cons {
                 return !c.is_empty();
             }
@@ -454,7 +454,7 @@ impl AudioOutput {
         self.available_devices = Arc::new(Mutex::new(Self::enumerate_devices()));
 
         // Store consumer
-        if let Ok(mut c) = self.consumer.lock() {
+        if let Ok(mut c) = self.consumer.try_lock() {
             *c = Some(consumer);
         }
 
@@ -479,9 +479,9 @@ impl AudioOutput {
         self.stream_decoder_eof = self.decoder_eof.clone();
         self.stream_bt_detected = self.is_bluetooth_detected.clone();
 
-        if let Ok(mut c) = self.stream_consumer.lock() {
+        if let Ok(mut c) = self.stream_consumer.try_lock() {
             // Caching is not Clone - use take() to move ownership
-            if let Ok(mut main_c) = self.consumer.lock() {
+            if let Ok(mut main_c) = self.consumer.try_lock() {
                 *c = main_c.take();
             }
         }
@@ -579,7 +579,7 @@ impl AudioOutput {
                             let do_flush = flush.load(Ordering::SeqCst);
 
                             if do_flush {
-                                if let Ok(mut c) = consumer.lock() {
+                                if let Ok(mut c) = consumer.try_lock() {
                                     if let Some(ref mut cons) = *c {
                                         loop {
                                             let drained = cons.pop_slice(&mut read_buffer);
@@ -596,7 +596,7 @@ impl AudioOutput {
                             if is_seeking || is_paused {
                                 read_buffer.fill(0.0);
                             } else {
-                                if let Ok(mut c) = consumer.lock() {
+                                if let Ok(mut c) = consumer.try_lock() {
                                     if let Some(ref mut cons) = *c {
                                         let samples_read = cons.pop_slice(&mut read_buffer);
                                         if samples_read == 0 {
@@ -626,7 +626,7 @@ impl AudioOutput {
 
                             // ---- DSP RACK (Toggleable) ----
                             if dsp_enabled.load(Ordering::SeqCst) {
-                                if let Ok(chain) = dsp_chain.lock() {
+                                if let Ok(chain) = dsp_chain.try_lock() {
                                     // Use temp buffer to avoid borrow conflict
                                     norm_input[..samples_per_write]
                                         .copy_from_slice(&processed_buffer[..samples_per_write]);
@@ -650,7 +650,7 @@ impl AudioOutput {
                             let left_gain = if bal > 0.0 { 1.0 - bal } else { 1.0 };
                             let right_gain = if bal < 0.0 { 1.0 + bal } else { 1.0 };
 
-                            let current_mode = *mode.lock().unwrap_or_else(|e| e.into_inner());
+                            let current_mode = if let Ok(m) = mode.try_lock() { *m } else { OutputMode::Stereo };
 
                             for frame in 0..frames {
                                 let mut left = processed_buffer[frame * 2];
@@ -735,7 +735,7 @@ impl AudioOutput {
                             let do_flush = flush.load(Ordering::SeqCst);
 
                             if do_flush {
-                                if let Ok(mut c) = consumer.lock() {
+                                if let Ok(mut c) = consumer.try_lock() {
                                     if let Some(ref mut cons) = *c {
                                         loop {
                                             let drained = cons.pop_slice(&mut read_buffer);
@@ -752,7 +752,7 @@ impl AudioOutput {
                             if is_seeking || is_paused {
                                 read_buffer.fill(0.0);
                             } else {
-                                if let Ok(mut c) = consumer.lock() {
+                                if let Ok(mut c) = consumer.try_lock() {
                                     if let Some(ref mut cons) = *c {
                                         let samples_read = cons.pop_slice(&mut read_buffer);
                                         if samples_read == 0 {
@@ -783,7 +783,7 @@ impl AudioOutput {
 
                             // ---- DSP RACK (Toggleable) ----
                             if dsp_enabled.load(Ordering::SeqCst) {
-                                if let Ok(chain) = dsp_chain.lock() {
+                                if let Ok(chain) = dsp_chain.try_lock() {
                                     // Use temp buffer to avoid borrow conflict
                                     norm_input[..samples_per_write]
                                         .copy_from_slice(&processed_buffer[..samples_per_write]);
@@ -807,7 +807,7 @@ impl AudioOutput {
                             let left_gain = if bal > 0.0 { 1.0 - bal } else { 1.0 };
                             let right_gain = if bal < 0.0 { 1.0 + bal } else { 1.0 };
 
-                            let current_mode = *mode.lock().unwrap_or_else(|e| e.into_inner());
+                            let current_mode = if let Ok(m) = mode.try_lock() { *m } else { OutputMode::Stereo };
 
                             for frame in 0..frames {
                                 let mut left = processed_buffer[frame * 2];

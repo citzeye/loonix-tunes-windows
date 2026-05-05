@@ -2,10 +2,11 @@
 
 use crate::audio::engine::MusicItem;
 use qmetaobject::{QString, QVariantMap};
+use std::collections::VecDeque;
 
 #[derive(Default, Clone)]
 pub struct QueueController {
-    pub queue: Vec<MusicItem>,
+    pub queue: VecDeque<MusicItem>,
 }
 
 impl QueueController {
@@ -14,7 +15,7 @@ impl QueueController {
     }
 
     pub fn add(&mut self, path: String, name: String) {
-        self.queue.push(MusicItem {
+        self.queue.push_back(MusicItem {
             name,
             path,
             is_folder: false,
@@ -33,11 +34,7 @@ impl QueueController {
     }
 
     pub fn pop_front(&mut self) -> Option<MusicItem> {
-        if self.queue.is_empty() {
-            None
-        } else {
-            Some(self.queue.remove(0))
-        }
+        self.queue.pop_front()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -65,10 +62,10 @@ impl QueueController {
     }
 
     pub fn get_all(&self) -> Vec<MusicItem> {
-        self.queue.clone()
+        self.queue.iter().cloned().collect()
     }
 
     pub fn set_all(&mut self, items: Vec<MusicItem>) {
-        self.queue = items;
+        self.queue = items.into();
     }
 }

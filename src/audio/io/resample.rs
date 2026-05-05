@@ -9,6 +9,10 @@ pub struct StereoResampler {
     swr_ctx: *mut ffmpeg_next::sys::SwrContext,
     input_rate: i32,
     output_rate: i32,
+    in_left: Vec<f32>,
+    in_right: Vec<f32>,
+    out_left: Vec<f32>,
+    out_right: Vec<f32>,
 }
 
 impl StereoResampler {
@@ -84,6 +88,10 @@ impl StereoResampler {
                 swr_ctx: ctx,
                 input_rate,
                 output_rate,
+                in_left: Vec::new(),
+                in_right: Vec::new(),
+                out_left: Vec::new(),
+                out_right: Vec::new(),
             })
         }
     }
@@ -97,27 +105,31 @@ impl StereoResampler {
         let max_output =
             (in_frames as f64 * self.output_rate as f64 / self.input_rate as f64) as usize + 64;
 
-        // === Split planar input ===
-        let mut in_left: Vec<f32> = Vec::with_capacity(in_frames);
-        let mut in_right: Vec<f32> = Vec::with_capacity(in_frames);
+        // Use pre-allocated buffers
+        if self.in_left.capacity() < in_frames {
+            self.in_left = Vec::with_capacity(in_frames);
+            self.in_right = Vec::with_capacity(in_frames);
+        }
+        if self.out_left.capacity() < max_output {
+            self.out_left = vec![0.0; max_output];
+            self.out_right = vec![0.0; max_output];
+        }
+        self.in_left.clear();
+        self.in_right.clear();
 
         for frame in input {
-            in_left.push(frame[0]);
-            in_right.push(frame[1]);
+            self.in_left.push(frame[0]);
+            self.in_right.push(frame[1]);
         }
 
         let in_data: [*const u8; 2] = [
-            in_left.as_ptr() as *const u8,
-            in_right.as_ptr() as *const u8,
+            self.in_left.as_ptr() as *const u8,
+            self.in_right.as_ptr() as *const u8,
         ];
 
-        // === Allocate planar output ===
-        let mut out_left: Vec<f32> = vec![0.0; max_output];
-        let mut out_right: Vec<f32> = vec![0.0; max_output];
-
         let mut out_data: [*mut u8; 2] = [
-            out_left.as_mut_ptr() as *mut u8,
-            out_right.as_mut_ptr() as *mut u8,
+            self.out_left.as_mut_ptr() as *mut u8,
+            self.out_right.as_mut_ptr() as *mut u8,
         ];
 
         let converted = unsafe {
@@ -136,10 +148,9 @@ impl StereoResampler {
 
         let converted = converted as usize;
 
-        // === Interleave back ===
         let mut result = Vec::with_capacity(converted);
         for i in 0..converted {
-            result.push([out_left[i], out_right[i]]);
+            result.push([self.out_left[i], self.out_right[i]]);
         }
 
         result

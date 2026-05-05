@@ -1038,39 +1038,6 @@ impl DspController {
     }
 
     pub fn load_user_fx_preset(&mut self, idx: usize) {
-        let temp_preset = crate::audio::config::FxPreset {
-            name: "".to_string(),
-            bass_enabled: self.user_fx_bass_enabled[idx],
-            bass_gain: self.user_fx_bass_gain[idx],
-            bass_cutoff: self.user_fx_bass_cutoff[idx],
-            bass_mode: self.user_fx_bass_mode[idx],
-            crystal_enabled: self.user_fx_crystal_enabled[idx],
-            crystal_amount: self.user_fx_crystal_amount[idx],
-            crystal_freq: 4000.0,
-            pitch_enabled: false,
-            pitch_semitones: 0.0,
-            middle_enabled: false,
-            middle_amount: 0.5,
-            surround_enabled: self.user_fx_surround_enabled[idx],
-            surround_width: self.user_fx_surround_width[idx],
-            mono_enabled: self.user_fx_mono_enabled[idx],
-            mono_width: self.user_fx_mono_width[idx],
-            stereo_enabled: self.user_fx_stereo_enabled[idx],
-            stereo_amount: self.user_fx_stereo_amount[idx],
-            crossfeed_enabled: self.user_fx_crossfeed_enabled[idx],
-            crossfeed_amount: self.user_fx_crossfeed_amount[idx],
-            compressor_enabled: self.user_fx_compressor_enabled[idx],
-            compressor_threshold: self.user_fx_compressor_threshold[idx],
-            reverb_enabled: self.user_fx_reverb_enabled[idx],
-            reverb_mode: self.user_fx_reverb_mode[idx],
-            reverb_amount: self.user_fx_reverb_amount[idx],
-        };
-
-        if !self.user_fx_enabled[idx] {
-            self.default_fx_snapshot = Some(temp_preset);
-            return;
-        }
-
         self.bass_active = self.user_fx_bass_enabled[idx];
         self.bass_gain = self.user_fx_bass_gain[idx] as f64;
         self.bass_cutoff = self.user_fx_bass_cutoff[idx] as f64;
