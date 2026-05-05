@@ -2,15 +2,20 @@
 
 use qmetaobject::prelude::*;
 use qmetaobject::{
-    QAbstractListModel, QByteArray, QModelIndex, QVariant, QVariantList, QVariantMap,
+    QAbstractListModel,
+    QByteArray,
+    QModelIndex,
+    QVariant,
+    QVariantList,
+    QVariantMap,
 };
-use serde::{Deserialize, Serialize};
+use serde::{ Deserialize, Serialize };
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::{ Arc, Mutex };
 
-use crate::audio::config::{AppConfig, ConfigError};
+use crate::audio::config::{ AppConfig, ConfigError };
 
 const ROLE_NAME: i32 = 257;
 const ROLE_COLORS: i32 = 258;
@@ -40,7 +45,7 @@ impl QAbstractListModel for CustomThemeListModel {
                     for (k, v) in colors {
                         map.insert(
                             QString::from(k.as_str()),
-                            QVariant::from(QString::from(v.as_str())),
+                            QVariant::from(QString::from(v.as_str()))
                         );
                     }
                 }
@@ -265,7 +270,7 @@ impl Default for ThemeConfig {
                     name: "Custom 3".to_string(),
                     is_active: false,
                     colors: Some(blue_colors),
-                },
+                }
             ],
         }
     }
@@ -280,9 +285,15 @@ macro_rules! c {
 #[derive(QObject, Default)]
 pub struct ThemeManager {
     base: qt_base_class!(trait QObject),
-    pub colormap: qt_property!(QVariantMap; NOTIFY colormap_changed),
+    pub colormap: qt_property! {
+        QVariantMap;
+        NOTIFY colormap_changed
+    },
     pub colormap_changed: qt_signal!(),
-    pub current_theme: qt_property!(QString; NOTIFY current_theme_changed),
+    pub current_theme: qt_property! {
+        QString;
+        NOTIFY current_theme_changed
+    },
     pub current_theme_changed: qt_signal!(),
     pub get_custom_theme_count: qt_method!(fn(&self) -> i32),
     pub get_custom_theme_name: qt_method!(fn(&self, index: i32) -> QString),
@@ -294,8 +305,7 @@ pub struct ThemeManager {
     pub get_custom_theme_list: qt_method!(fn(&self) -> QVariantList),
     pub set_theme: qt_method!(fn(&mut self, name: String)),
     pub cycle_theme: qt_method!(fn(&mut self)),
-    pub get_editor_starter_colors:
-        qt_method!(fn(&self, is_edit_mode: bool, index: i32) -> QVariantMap),
+    pub get_editor_starter_colors: qt_method!(fn(&self, is_edit_mode: bool, index: i32) -> QVariantMap),
     pub get_color_template: qt_method!(fn(&self) -> QVariantMap),
     pub save_theme_editor: qt_method!(fn(&mut self, index: i32, name: String, colors: QVariantMap)),
     pub get_custom_themes: qt_method!(fn(&self) -> QVariantList),
@@ -319,8 +329,7 @@ impl ThemeManager {
         self.config = Some(config);
 
         // Find active theme
-        let active_name = self
-            .themes
+        let active_name = self.themes
             .iter()
             .find(|t| t.is_active)
             .map(|t| t.name.clone())
@@ -342,7 +351,7 @@ impl ThemeManager {
     }
 
     pub fn get_custom_theme_name(&self, index: i32) -> QString {
-        if index >= 0 && index < self.themes.len() as i32 {
+        if index >= 0 && index < (self.themes.len() as i32) {
             QString::from(self.themes[index as usize].name.as_str())
         } else {
             QString::from("")
@@ -350,7 +359,7 @@ impl ThemeManager {
     }
 
     pub fn set_custom_theme_name(&mut self, index: i32, name: String) {
-        if index >= 0 && index < self.themes.len() as i32 {
+        if index >= 0 && index < (self.themes.len() as i32) {
             let old_name = self.themes[index as usize].name.clone();
             let is_current_theme = old_name == self.current_theme.to_string();
 
@@ -365,26 +374,20 @@ impl ThemeManager {
     }
 
     pub fn get_custom_theme_colors(&self, index: i32) -> QVariantMap {
-        if index >= 0 && index < self.themes.len() as i32 {
+        if index >= 0 && index < (self.themes.len() as i32) {
             let colors = &self.themes[index as usize].colors;
             if let Some(ref c) = colors {
                 if c.is_empty() {
                     return ThemeConfig::user_template_colors()
                         .iter()
                         .map(|(k, v)| {
-                            (
-                                QString::from(k.as_str()),
-                                QVariant::from(QString::from(v.as_str())),
-                            )
+                            (QString::from(k.as_str()), QVariant::from(QString::from(v.as_str())))
                         })
                         .collect();
                 }
                 c.iter()
                     .map(|(k, v)| {
-                        (
-                            QString::from(k.as_str()),
-                            QVariant::from(QString::from(v.as_str())),
-                        )
+                        (QString::from(k.as_str()), QVariant::from(QString::from(v.as_str())))
                     })
                     .collect()
             } else {
@@ -415,10 +418,7 @@ impl ThemeManager {
         ThemeConfig::user_template_colors()
             .iter()
             .map(|(k, v)| {
-                (
-                    QString::from(k.as_str()),
-                    QVariant::from(QString::from(v.as_str())),
-                )
+                (QString::from(k.as_str()), QVariant::from(QString::from(v.as_str())))
             })
             .collect()
     }
@@ -443,10 +443,7 @@ impl ThemeManager {
         ThemeConfig::user_template_colors()
             .iter()
             .map(|(k, v)| {
-                (
-                    QString::from(k.as_str()),
-                    QVariant::from(QString::from(v.as_str())),
-                )
+                (QString::from(k.as_str()), QVariant::from(QString::from(v.as_str())))
             })
             .collect()
     }
@@ -456,10 +453,7 @@ impl ThemeManager {
             .iter()
             .map(|t| {
                 let mut map = QVariantMap::default();
-                map.insert(
-                    QString::from("name"),
-                    QVariant::from(QString::from(t.name.clone())),
-                );
+                map.insert(QString::from("name"), QVariant::from(QString::from(t.name.clone())));
                 map.insert(QString::from("is_active"), QVariant::from(t.is_active));
                 QVariant::from(map)
             })
@@ -480,10 +474,7 @@ impl ThemeManager {
             .filter(|t| t.colors.is_some())
             .map(|t| {
                 let mut map = QVariantMap::default();
-                map.insert(
-                    QString::from("name"),
-                    QVariant::from(QString::from(t.name.clone())),
-                );
+                map.insert(QString::from("name"), QVariant::from(QString::from(t.name.clone())));
                 map.insert(QString::from("is_active"), QVariant::from(t.is_active));
                 QVariant::from(map)
             })
@@ -497,10 +488,7 @@ impl ThemeManager {
             .filter(|(_, t)| t.colors.is_some())
             .map(|(i, t)| {
                 let mut map = QVariantMap::default();
-                map.insert(
-                    QString::from("name"),
-                    QVariant::from(QString::from(t.name.clone())),
-                );
+                map.insert(QString::from("name"), QVariant::from(QString::from(t.name.clone())));
                 map.insert(QString::from("is_active"), QVariant::from(t.is_active));
                 map.insert(QString::from("original_index"), QVariant::from(i as i32));
                 QVariant::from(map)
@@ -514,7 +502,7 @@ impl ThemeManager {
 
     pub fn get_editor_starter_colors(&self, is_edit_mode: bool, index: i32) -> QVariantMap {
         if is_edit_mode {
-            if index >= 0 && index < self.themes.len() as i32 {
+            if index >= 0 && index < (self.themes.len() as i32) {
                 let colors = &self.themes[index as usize].colors;
                 if let Some(ref c) = colors {
                     if c.is_empty() {
@@ -523,10 +511,7 @@ impl ThemeManager {
                     return c
                         .iter()
                         .map(|(k, v)| {
-                            (
-                                QString::from(k.as_str()),
-                                QVariant::from(QString::from(v.as_str())),
-                            )
+                            (QString::from(k.as_str()), QVariant::from(QString::from(v.as_str())))
                         })
                         .collect();
                 }
@@ -535,10 +520,7 @@ impl ThemeManager {
         self.current_raw_colors
             .iter()
             .map(|(k, v)| {
-                (
-                    QString::from(k.as_str()),
-                    QVariant::from(QString::from(v.as_str())),
-                )
+                (QString::from(k.as_str()), QVariant::from(QString::from(v.as_str())))
             })
             .collect()
     }
@@ -559,7 +541,7 @@ impl ThemeManager {
             "Orange".into(),
             "Pink".into(),
             "Red".into(),
-            "Yellow".into(),
+            "Yellow".into()
         ];
         themes.sort();
         themes.insert(0, "Loonix".into());
@@ -610,10 +592,7 @@ impl ThemeManager {
         let qmap: QVariantMap = colors
             .iter()
             .map(|(k, v)| {
-                (
-                    QString::from(k.as_str()),
-                    QVariant::from(QString::from(v.as_str())),
-                )
+                (QString::from(k.as_str()), QVariant::from(QString::from(v.as_str())))
             })
             .collect();
 
@@ -728,7 +707,7 @@ impl ThemeManager {
                     // --- Playlist Section ---
                     "playlisttext", "#d1d8e6",
                     "playlistfolder", "#f5a623",
-                    "playlistactive", "#843ff3",
+                    "playlistactive", "#90f33f",
                     "playlisticon", "#843ff3",
 
                     // --- DSP Section ---

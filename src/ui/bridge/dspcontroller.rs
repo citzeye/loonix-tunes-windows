@@ -595,7 +595,7 @@ impl DspController {
             .store(false, std::sync::atomic::Ordering::Relaxed);
 
         self.mono_active = false;
-        crate::audio::dsp::stereowidth::get_mono_enabled_arc()
+        crate::audio::dsp::monostereo::get_mono_enabled_arc()
             .store(false, std::sync::atomic::Ordering::Relaxed);
 
         self.stereo_active = false;
@@ -949,9 +949,9 @@ impl DspController {
 
         self.mono_active = preset.mono_enabled;
         self.mono_width = preset.mono_width as f64;
-        crate::audio::dsp::stereowidth::get_mono_enabled_arc()
+        crate::audio::dsp::monostereo::get_mono_enabled_arc()
             .store(preset.mono_enabled, std::sync::atomic::Ordering::Relaxed);
-        crate::audio::dsp::stereowidth::get_mono_width_arc().store(
+        crate::audio::dsp::monostereo::get_mono_width_arc().store(
             preset.mono_width.to_bits(),
             std::sync::atomic::Ordering::Relaxed,
         );
@@ -1123,7 +1123,7 @@ impl DspController {
 
         self.mono_active = self.user_fx_mono_enabled[idx];
         self.mono_width = self.user_fx_mono_width[idx] as f64;
-        crate::audio::dsp::stereowidth::get_mono_enabled_arc().store(
+        crate::audio::dsp::monostereo::get_mono_enabled_arc().store(
             self.user_fx_mono_enabled[idx],
             std::sync::atomic::Ordering::Relaxed,
         );
@@ -1418,14 +1418,14 @@ impl DspController {
 
     pub fn toggle_stereo_width(&mut self) {
         self.mono_active = !self.mono_active;
-        crate::audio::dsp::stereowidth::get_mono_enabled_arc()
+        crate::audio::dsp::monostereo::get_mono_enabled_arc()
             .store(self.mono_active, std::sync::atomic::Ordering::Relaxed);
         self.mono_changed();
     }
 
     pub fn set_stereo_width_amount(&mut self, val: f64) {
         self.mono_width = val;
-        crate::audio::dsp::stereowidth::get_mono_width_arc()
+        crate::audio::dsp::monostereo::get_mono_width_arc()
             .store((val as f32).to_bits(), std::sync::atomic::Ordering::Relaxed);
         self.mono_width_changed();
     }
@@ -1678,9 +1678,9 @@ impl DspController {
             self.mono_active = false;
             self.mono_width = 1.0;
         }
-        crate::audio::dsp::stereowidth::get_mono_enabled_arc()
+        crate::audio::dsp::monostereo::get_mono_enabled_arc()
             .store(self.mono_active, std::sync::atomic::Ordering::Relaxed);
-        crate::audio::dsp::stereowidth::get_mono_width_arc().store(
+        crate::audio::dsp::monostereo::get_mono_width_arc().store(
             (self.mono_width as f32).to_bits(),
             std::sync::atomic::Ordering::Relaxed,
         );

@@ -39,7 +39,7 @@ pub mod rack;
 pub mod reverb;
 pub mod rubberbandffi;
 pub mod stereoenhance;
-pub mod stereowidth;
+pub mod monostereo;
 pub mod surround;
 
 pub use self::chain::DspChain;
@@ -69,7 +69,7 @@ pub use self::reverb::{
     get_reverb_room_size_arc, Reverb,
 };
 pub use self::stereoenhance::{get_stereo_amount_arc, get_stereo_enabled_arc, StereoEnhance};
-pub use self::stereowidth::{get_mono_enabled_arc, get_mono_width_arc, StereoWidth};
+pub use self::monostereo::{get_mono_enabled_arc, get_mono_width_arc, MonoStereo};
 pub use self::surround::{get_surround_enabled_arc, get_surround_width_arc, SurroundProcessor};
 
 pub trait DspProcessor: Send + Sync {

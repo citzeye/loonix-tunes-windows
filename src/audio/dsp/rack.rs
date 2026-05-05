@@ -3,7 +3,7 @@
 use crate::audio::dsp::{
     BassBooster, Compressor, Crossfeed, Crystalizer, DspProcessor, DspSettings,
     EqPreamp, EqProcessor, MiddleClarity, PitchShifter, Reverb, StereoEnhance,
-    StereoWidth, SurroundProcessor,
+    MonoStereo, SurroundProcessor,
 };
 
 pub struct DspRack {
@@ -43,7 +43,7 @@ impl DspRack {
         processors.push(Box::new(StereoEnhance::new()));
         processors.push(Box::new(Crystalizer::new()));
         processors.push(Box::new(SurroundProcessor::new()));
-        processors.push(Box::new(StereoWidth::new()));
+        processors.push(Box::new(MonoStereo::new()));
         processors.push(Box::new(PitchShifter::new()));
         processors.push(Box::new(MiddleClarity::new()));
         processors.push(Box::new(Crossfeed::new()));
