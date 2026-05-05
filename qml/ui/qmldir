@@ -13,6 +13,7 @@ Pref 1.0 Pref.qml
 Dsp 1.0 Dsp.qml
 ThemeSlider 1.0 components/ThemeSlider.qml
 RenameDialog 1.0 components/RenameDialog.qml
+AppShortcuts 1.0 components/AppShortcuts.qml
 PrefButton 1.0 pref/PrefButton.qml
 PrefDropdown 1.0 pref/PrefDropdown.qml
 PrefSlider 1.0 pref/PrefSlider.qml
@@ -24,3 +25,4 @@ PrefCollapsibleSection 1.0 pref/PrefCollapsibleSection.qml
 PrefDonate 1.0 pref/PrefDonate.qml
 PrefReportBug 1.0 pref/PrefReportBug.qml
 PrefThemeEditor 1.0 pref/PrefThemeEditor.qml
+PrefShortcuts 1.0 pref/PrefShortcuts.qml

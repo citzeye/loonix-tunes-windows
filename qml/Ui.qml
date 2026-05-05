@@ -7,6 +7,7 @@ import QtQuick.Layouts
 import Qt.labs.platform
 import Loonix 1.0
 import "ui"
+import "ui/components"
 
 Window {
     id: root
@@ -78,6 +79,11 @@ Window {
     // Create popup menu instance
     PopupMenu {
         id: popupMenu
+    }
+
+    // Global keyboard shortcuts
+    AppShortcuts {
+        id: globalShortcuts
     }
 
 
@@ -172,18 +178,22 @@ Window {
     }
 
     FontLoader {
+        // for text
         id: kodeMono
         source: 'qrc:/assets/fonts/KodeMono-VariableFont_wght.ttf'
     }
     FontLoader {
+        // for icon
         id: symbols
         source: 'qrc:/assets/fonts/SymbolsNerdFont-Regular.ttf'
     }
     FontLoader {
+        // for number
         id: sansSerif
         source: 'qrc:/assets/fonts/Oswald-Regular.ttf'
     }
     FontLoader {
+        // for emoticon
         id: emoji
         source: 'qrc:/assets/fonts/twemoji.ttf'
     }
