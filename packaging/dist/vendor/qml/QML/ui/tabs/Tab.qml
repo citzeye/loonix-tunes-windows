@@ -73,6 +73,7 @@ Rectangle {
         onClicked: function(mouse) {
           if (mouse.button === Qt.LeftButton) {
             musicModel.switch_to_external_files()
+            root.playlistSource = "qrc:/qml/ui/playlist/Playlist.qml"
           } else if (mouse.button === Qt.RightButton) {
             root.popupMenuVisible = false
             root.tabContextMenuVisible = false

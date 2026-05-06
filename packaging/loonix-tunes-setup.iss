@@ -1,5 +1,5 @@
 [Setup]
-AppName=Loonix Tunes
+AppName=Loonix Tunes Win64
 AppVersion=2.0.0
 DefaultDirName={autopf}\Loonix Tunes
 DefaultGroupName=Loonix Tunes

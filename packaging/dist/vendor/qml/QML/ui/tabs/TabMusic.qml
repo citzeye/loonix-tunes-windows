@@ -81,12 +81,12 @@ Rectangle {
     anchors.fill: parent
     hoverEnabled: true
     acceptedButtons: Qt.LeftButton | Qt.RightButton
-    onClicked: function(mouse) {
-      if (mouse.button === Qt.LeftButton) {
-        musicModel.switch_to_music()
-      } else if (mouse.button === Qt.RightButton) {
-        addMenu.popup()
-      }
+onClicked: function(mouse) {
+        if (mouse.button === Qt.LeftButton) {
+          musicModel.switch_to_music()
+        } else if (mouse.button === Qt.RightButton) {
+          addMenu.popup()
+        }
     }
   }
 

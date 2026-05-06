@@ -7,6 +7,7 @@ import QtQuick.Layouts
 import Qt.labs.platform
 import Loonix 1.0
 import "ui"
+import "ui/components"
 
 Window {
     id: root
@@ -27,7 +28,7 @@ Window {
     // Karena sekarang minimumWidth udah dikunci di 25%,
     // Window lo GAK AKAN BISA ditarik lebih kecil dari 25% oleh OS.
     // Tapi kita tetep pasang logic 25% di sini buat jaga-jaga.
-    readonly property real criticalWidth: Screen.width * 0.25
+    readonly property real criticalWidth: Screen.width * 0.3
 
     Rectangle {
         id: screenWarning
@@ -80,6 +81,11 @@ Window {
         id: popupMenu
     }
 
+    // Global keyboard shortcuts
+    AppShortcuts {
+        id: globalShortcuts
+    }
+
 
     property real popupX: 0
     property real popupY: 0
@@ -111,7 +117,7 @@ Window {
     property int prefThemeEditorProfileTarget: -1
 
     // MINIMAL: 30% dari lebar/tinggi monitor user
-    minimumWidth: Screen.width * 0.25
+    minimumWidth: Screen.width * 0.3
     minimumHeight: Screen.height * 0.25
 
     // MAKSIMAL: 100% dari area kerja monitor (biar gak bablas ke taskbar)
@@ -145,6 +151,8 @@ Window {
 
     property bool isInitialized: false
 
+    property string playlistSource: "qrc:/qml/ui/playlist/Playlist.qml"
+
     onXChanged: if (isInitialized) {
         musicModel.save_window_position(root.x, root.y, root.width, root.height);
     }
@@ -161,7 +169,7 @@ Window {
     Timer {
         id: positionUpdateTimer
         interval: 33  // ~30fps, cukup smooth tanpa beban CPU
-        running: true
+        running: musicModel.is_playing
         repeat: true
         triggeredOnStart: false
         onTriggered: {
@@ -170,226 +178,57 @@ Window {
     }
 
     FontLoader {
+        // for text
         id: kodeMono
         source: 'qrc:/assets/fonts/KodeMono-VariableFont_wght.ttf'
     }
     FontLoader {
+        // for icon
         id: symbols
         source: 'qrc:/assets/fonts/SymbolsNerdFont-Regular.ttf'
     }
     FontLoader {
+        // for number
         id: sansSerif
         source: 'qrc:/assets/fonts/Oswald-Regular.ttf'
     }
     FontLoader {
+        // for emoticon
         id: emoji
         source: 'qrc:/assets/fonts/twemoji.ttf'
     }
 
-    // Rename Dialog
-    Item {
-        id: renameDialogContainer
-        visible: root.renameDialogVisible
-        anchors.fill: parent
-        z: 9999
-
-        Rectangle {
-            anchors.fill: parent
-            color: theme.colormap["overlay"]
-
-            MouseArea {
-                anchors.fill: parent
-                onClicked: {
-                    root.renameDialogVisible = false;
-                }
+    // Folder/Tab Rename Dialog
+    RenameDialog {
+        id: folderRenameDialog
+        dialogVisible: root.renameDialogVisible
+        initialText: musicModel.get_current_rename_name(root.renameDialogIndex)
+        maxLength: 16
+        onSaved: {
+            if (newName.trim().length > 0) {
+                musicModel.rename_folder(root.renameDialogIndex, newName.trim())
             }
+            root.renameDialogVisible = false
         }
-
-        Rectangle {
-            id: renameDialogBox
-            anchors.centerIn: parent
-            width: 240
-            height: 80
-            color: theme.colormap.bgmain
-            border.color: theme.colormap.playeraccent
-            radius: 4
-            antialiasing: false
-
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 10
-                spacing: 8
-
-                TextInput {
-                    id: renameInput
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 28
-                    text: musicModel.get_current_rename_name(root.renameDialogIndex)
-                    font.family: kodeMono.name
-                    font.pixelSize: 12
-                    color: theme.colormap.playeraccent
-                    verticalAlignment: Text.AlignVCenter
-                    maximumLength: 10
-                    activeFocusOnPress: true
-                    selectByMouse: true
-
-                    onAccepted: {
-                        if (text.trim().length > 0) {
-                            musicModel.rename_folder(root.renameDialogIndex, text.trim());
-                        }
-                        root.renameDialogVisible = false;
-                    }
-
-                    Component.onCompleted: {
-                        forceActiveFocus();
-                        selectAll();
-                    }
-                }
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 16
-
-                    Text {
-                        text: 'CANCEL'
-                        font.family: kodeMono.name
-                        font.pixelSize: 10
-                        color: renameCancelMA.containsMouse ? theme.colormap.playlisticon : theme.colormap.tabtext
-                        MouseArea {
-                            id: renameCancelMA
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            onClicked: {
-                                root.renameDialogVisible = false;
-                            }
-                        }
-                    }
-
-                    Item {
-                        Layout.fillWidth: true
-                    }
-
-                    Text {
-                        text: 'SAVE'
-                        font.family: kodeMono.name
-                        font.pixelSize: 10
-                        color: renameSaveMA.containsMouse ? theme.colormap.playlisticon : theme.colormap.tabtext
-                        MouseArea {
-                            id: renameSaveMA
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            onClicked: {
-                                if (renameInput.text.trim().length > 0) {
-                                    musicModel.rename_folder(root.renameDialogIndex, renameInput.text.trim());
-                                }
-                                root.renameDialogVisible = false;
-                            }
-                        }
-                    }
-                }
-            }
+        onCancelled: {
+            root.renameDialogVisible = false
         }
     }
 
-    // Custom Theme Rename Dialog
-    Item {
-        id: customRenameDialogContainer
-        visible: root.customRenameDialogVisible
-        anchors.fill: parent
-        z: 10001
-
-        Rectangle {
-            anchors.fill: parent
-            color: theme.colormap["overlay"]
-
-            MouseArea {
-                anchors.fill: parent
-                onClicked: {
-                    root.customRenameDialogVisible = false;
-                }
+    // Theme Rename Dialog
+    RenameDialog {
+        id: themeRenameDialog
+        dialogVisible: root.customRenameDialogVisible
+        initialText: theme.get_custom_theme_name(root.customRenameDialogIndex)
+        maxLength: 16
+        onSaved: {
+            if (newName.trim().length > 0) {
+                theme.set_custom_theme_name(root.customRenameDialogIndex, newName.trim())
             }
+            root.customRenameDialogVisible = false
         }
-
-        Rectangle {
-            id: customRenameDialogBox
-            anchors.centerIn: parent
-            width: 240
-            height: 80
-            color: theme.colormap.bgmain
-            border.color: theme.colormap.playeraccent
-            radius: 4
-
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 10
-                spacing: 8
-
-                TextInput {
-                    id: customRenameInput
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 28
-                    text: theme.get_custom_theme_name(root.customRenameDialogIndex)
-                    font.family: kodeMono.name
-                    font.pixelSize: 12
-                    color: theme.colormap.playeraccent
-                    verticalAlignment: Text.AlignVCenter
-                    maximumLength: 10
-                    activeFocusOnPress: true
-                    selectByMouse: true
-
-                    onAccepted: {
-                        if (text.trim().length > 0) {
-                            theme.set_custom_theme_name(root.customRenameDialogIndex, text.trim());
-                        }
-                        root.customRenameDialogVisible = false;
-                    }
-
-                    Component.onCompleted: {
-                        forceActiveFocus();
-                        selectAll();
-                    }
-                }
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 16
-
-                    Text {
-                        text: 'CANCEL'
-                        font.family: kodeMono.name
-                        font.pixelSize: 10
-                        color: customRenameCancelMA.containsMouse ? theme.colormap.playlisticon : theme.colormap.tabtext
-                        MouseArea {
-                            id: customRenameCancelMA
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            onClicked: root.customRenameDialogVisible = false
-                        }
-                    }
-
-                    Item {
-                        Layout.fillWidth: true
-                    }
-
-                    Text {
-                        text: 'SAVE'
-                        font.family: kodeMono.name
-                        font.pixelSize: 10
-                        color: customRenameSaveMA.containsMouse ? theme.colormap.playlisticon : theme.colormap.tabtext
-                        MouseArea {
-                            id: customRenameSaveMA
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            onClicked: {
-                                if (customRenameInput.text.trim().length > 0) {
-                                    theme.set_custom_theme_name(root.customRenameDialogIndex, customRenameInput.text.trim());
-                                }
-                                root.customRenameDialogVisible = false;
-                            }
-                        }
-                    }
-                }
-            }
+        onCancelled: {
+            root.customRenameDialogVisible = false
         }
     }
 
@@ -1183,10 +1022,11 @@ Window {
             // ==========================================
             // SECTION: PLAYLIST
             // ==========================================
-            Playlist {
-                id: playlistSection
+            Loader {
+                id: playlistLoader
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                source: root.playlistSource
             }
         }
     }

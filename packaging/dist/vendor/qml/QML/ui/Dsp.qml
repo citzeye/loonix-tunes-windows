@@ -106,7 +106,7 @@ RowLayout {
                     // Row 2: Sliders (tengah) - bound to dspModel.eq_bands via reactive property
                     EqSliderBox {
                         id: eqPreamp
-                        controlValue: dspModel.get_preamp_gain()
+                        controlValue: dspModel.preamp_value
                         onSliderChanged: val => dspModel.set_preamp_gain(val)
                     }
                     EqSliderBox {
@@ -280,6 +280,7 @@ RowLayout {
                         id: surrSlider
                         enabled: surrToggle.isOn && dspModel.dsp_enabled
                         controlValue: dspModel.surround_width
+                        sliderRange: "surround"  // 1.0 to 2.0
                         onSliderChanged: val => {
                             dspModel.set_surround_width(val);
                         }
@@ -287,6 +288,7 @@ RowLayout {
                     FxValueBox {
                         enabled: surrToggle.isOn && dspModel.dsp_enabled
                         sliderValue: surrSlider.currentValue
+                        showSurround: true
                         linkSlider: surrSlider
                     }
                     FxResetButton {
@@ -1048,9 +1050,9 @@ RowLayout {
                 id: sld
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                from: rootItem.sliderRange === "db" ? -60.0 : 0.0
-                to: rootItem.sliderRange === "db" ? 0.0 : 1.0
-                stepSize: rootItem.sliderRange === "db" ? 1.0 : 0.01
+                from: rootItem.sliderRange === "db" ? -60.0 : rootItem.sliderRange === "surround" ? 1.0 : 0.0
+                to: rootItem.sliderRange === "db" ? 0.0 : rootItem.sliderRange === "surround" ? 2.0 : 1.0
+                stepSize: rootItem.sliderRange === "db" ? 1.0 : rootItem.sliderRange === "surround" ? 0.01 : 0.01
                 value: rootItem.controlValue
                 onMoved: rootItem.sliderChanged(sld.value)
 
@@ -1554,6 +1556,7 @@ RowLayout {
         property real hzMax: 10000.0
         property bool showSemitones: false
         property bool showDbCompressor: false
+        property bool showSurround: false
         property var linkSlider: null
 
         Layout.preferredWidth: 60
@@ -1576,6 +1579,8 @@ RowLayout {
                     if (sliderValue === 0)
                         return "0 ST";
                     return (sliderValue > 0 ? "+" : "") + Math.round(sliderValue) + " ST";
+                } else if (rootItem.showSurround) {
+                    return sliderValue.toFixed(2);
                 } else {
                     return Math.round(sliderValue * 100) + "%";
                 }

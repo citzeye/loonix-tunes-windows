@@ -1,8 +1,8 @@
 [package]
-name = "LoonixTunesWin64v2"
+name = "Loonix Tunes Win64"
 version = "2.0.0"
 edition = "2021"
-authors = ["citz"]
+authors = ["citzeye"]
 description = "Loonix Tunes - Native Desktop Music Player for Windows"
 license = "GPL-3.0"
 
@@ -12,7 +12,7 @@ eula = false
 [dependencies]
 # --- CORE AUDIO ENGINE (Universal) ---
 ffmpeg-next = "8.0"
-ringbuf = "0.4"
+ringbuf = "0.5.0"
 biquad = "0.6.0"
 dasp = "0.11"
 freeverb = "0.2.0"
@@ -25,11 +25,14 @@ libc = "0.2"
 # --- WINDOWS ONLY: Audio Backend, Media Controls, UI, and System ---
 [target.'cfg(target_os = "windows")'.dependencies]
 qmetaobject = "0.2.10"
-cpal = "0.15"
+cpal = "0.17.3"
 # souvlaki = "0.7"  # Disabled for now
-windows-sys = { version = "0.52", features = ["Win32_Media_Audio", "Win32_Devices_Properties"] }
+windows-sys = { version = "0.61.2", features = [
+    "Win32_Media_Audio",
+    "Win32_Devices_Properties",
+] }
 trash = "5.2.5"
-which = "6.0"
+which = "8.0.2"
 
 # --- UI & UTILS (Universal) ---
 cstr = "0.2"
@@ -50,7 +53,7 @@ winres = "0.1"
 
 [profile.release]
 strip = true
-opt-level = "z"  # Optimize for size
+opt-level = "z" # Optimize for size
 
 [profile.dev]
-opt-level = 3  # Maximum optimization for DSP modules during development
+opt-level = 3 # Maximum optimization for DSP modules during development
